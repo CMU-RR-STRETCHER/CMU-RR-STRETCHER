@@ -294,7 +294,7 @@
 
   .field textarea{resize:vertical;min-height:50px;}
 
-  /* Custom Search Dropdown Styles (พร้อมไอคอนสามเหลี่ยมจำลอง) */
+  /* Custom Search Dropdown Styles */
   .custom-dropdown-container {
     position: relative;
   }
@@ -304,7 +304,7 @@
     align-items: center;
   }
   .input-wrapper input {
-    padding-right: 40px; /* เว้นที่ให้ไอคอนสามเหลี่ยม */
+    padding-right: 40px;
   }
   .dropdown-toggle-btn {
     position: absolute;
@@ -897,7 +897,7 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
-// Modal เพิ่มผู้ป่วยและการค้นหาวอร์ดแบบ Custom Dropdown (รองรับ iPad เต็มรูปแบบ)
+// Modal เพิ่มผู้ป่วยและการค้นหาวอร์ดแบบ Custom Dropdown
 const overlay = document.getElementById('overlay');
 const wardInput = document.getElementById('wardInput');
 const wardToggleBtn = document.getElementById('wardToggleBtn');
@@ -913,7 +913,6 @@ function updateWardDropdown(filterText = ''){
   wardDropdownList.classList.add('show');
 }
 
-// รองรับทั้ง input และ keyup สำหรับ iPad/Safari
 ['input', 'keyup', 'click'].forEach(evtType => {
   wardInput.addEventListener(evtType, (e) => {
     updateWardDropdown(e.target.value);
@@ -924,7 +923,6 @@ wardInput.addEventListener('focus', () => {
   updateWardDropdown(wardInput.value);
 });
 
-// กดที่ปุ่มลูกศรสามเหลี่ยมเพื่อเปิดดูรายการทั้งหมดทันที
 wardToggleBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   if (wardDropdownList.classList.contains('show')) {
@@ -943,7 +941,6 @@ wardDropdownList.addEventListener('click', (e) => {
   }
 });
 
-// ปิด dropdown เมื่อคลิกพื้นที่อื่น
 document.addEventListener('click', (e) => {
   if(!e.target.closest('.custom-dropdown-container')){
     wardDropdownList.classList.remove('show');
@@ -1087,7 +1084,7 @@ document.getElementById('btnGoReady').addEventListener('click', () => {
 
 // Actions Click Handler
 document.addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-action]');
+  const btn = e.target.closest('button[data-action]') || e.target.closest('span[data-action]');
   if(btn){
     const action = btn.getAttribute('data-action');
     const id = btn.getAttribute('data-id');
@@ -1125,7 +1122,7 @@ document.addEventListener('click', (e) => {
     else if(action === 'toggle-xray'){
       const c = cases.find(item => item.id === id);
       if(c){
-        const nextXray = c.xray === 'yes' ? 'no' : 'yes';
+        const nextXray = (c.xray === 'yes') ? 'no' : 'yes';
         casesRef.child(id).update({ xray: nextXray });
       }
     }
