@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMU RR-STRETCHER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1E2D;
+    --surface:#122A3D;
+    --surface-2:#17334A;
+    --line:#24455F;
+    --text:#EAF2F5;
+    --muted:#7C93A3;
+    --ready:#3DDC97;
+    --ready-dim:#1E4636;
+    --waiting:#FFD166;
+    --waiting-dim:#4A3E1C;
+    --prep:#FFB84D;
+    --prep-dim:#4A3A1C;
+    --picked:#4DA8FF;
+    --danger:#FF6B6B;
+    --danger-dim:#4A2020;
+    --xray:#B98CFF;
+    --xray-dim:#332249;
+    --infection:#FF9F43;
+    --infection-dim:#4A321A;
+    --resp:#54A0FF;
+    --resp-dim:#1B3454;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Sarabun',sans-serif;
+    min-height:100vh;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  header{
+    padding:16px 24px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+    position:sticky;
+    top:0;
+    background:rgba(11,30,45,0.95);
+    backdrop-filter:blur(6px);
+    z-index:10;
+  }
+
+  .title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .title .dot{
+    width:10px;height:10px;border-radius:50%;
+    background:var(--ready);
+    box-shadow:0 0 10px var(--ready);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.2px;}
+  .subtitle{font-size:12px;color:var(--muted);margin-top:2px;}
+  .clock-stack{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    text-align:center;
+    font-weight:700;
+  }
+  .clock-stack #clockDate{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:2px;}
+  .clock-stack #clock{font-size:24px;color:var(--text);letter-spacing:.5px;}
+  @media(max-width:720px){
+    .clock-stack{position:static;transform:none;order:3;width:100%;margin-top:4px;}
+  }
+
+  .add-btn{
+    background:var(--ready);
+    color:#06251A;
+    border:none;
+    padding:10px 16px;
+    border-radius:10px;
+    font-family:inherit;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .add-btn:hover{filter:brightness(1.08);}
+
+  main{padding:20px 24px 60px;max-width:1400px;margin:0 auto;}
+
+  .columns{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:20px;
+    align-items:start;
+  }
+  .column-head{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .column-head h2{font-size:14px;margin:0;font-weight:700;letter-spacing:.2px;}
+  .col-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+  .col-dot.prep{background:var(--prep);}
+  .col-dot.waiting{background:var(--waiting);box-shadow:0 0 8px var(--waiting);}
+  .col-dot.ready{background:var(--ready);box-shadow:0 0 8px var(--ready);}
+  .col-count{
+    margin-left:auto;
+    font-size:12px;
+    font-weight:700;
+    color:var(--muted);
+    background:var(--surface-2);
+    border-radius:100px;
+    padding:2px 9px;
+  }
+  @media(max-width:960px){
+    .columns{grid-template-columns:1fr;}
+  }
+
+  .board{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:14px;
+  }
+  .empty{
+    grid-column:1/-1;
+    text-align:center;
+    padding:60px 20px;
+    color:var(--muted);
+    border:1px dashed var(--line);
+    border-radius:14px;
+    font-size:14px;
+  }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .card.status-waiting{border-color:var(--waiting);}
+  .card.status-ready{border-color:var(--ready);}
+  .card.status-urgent{border-color:var(--danger);animation:urgentPulse 1.4s infinite;}
+  .card.status-fasttrack{
+    border-color:var(--danger);
+    background:linear-gradient(180deg, rgba(74,32,32,0.6) 0%, var(--surface) 100%);
+    box-shadow:0 0 12px rgba(255,107,107,0.25);
+  }
+  @keyframes urgentPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,0.0);}
+    50%{box-shadow:0 0 0 4px rgba(255,107,107,0.15);}
+  }
+
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .ward-label{font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:.4px;}
+  .ward-name{font-size:19px;font-weight:700;line-height:1.25;}
+  .date-line{font-size:12px;color:var(--muted);margin-top:2px;}
+  
+  .card-right-info{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:6px;
+  }
+  .created-time-tag{
+    font-size:11px;
+    font-weight:700;
+    color:var(--text);
+    background:var(--surface-2);
+    padding:3px 8px;
+    border-radius:6px;
+    border:1px solid var(--line);
+    white-space:nowrap;
+  }
+
+  .badge{
+    font-size:11px;
+    font-weight:700;
+    padding:5px 10px;
+    border-radius:100px;
+    white-space:nowrap;
+    flex:0 0 auto;
+  }
+  .badge.prep{background:var(--prep-dim);color:var(--prep);}
+  .badge.waiting{background:var(--waiting-dim);color:var(--waiting);}
+  .badge.ready{background:var(--ready-dim);color:var(--ready);}
+  .badge.urgent{background:var(--danger-dim);color:var(--danger);}
+  .badge.fasttrack{background:var(--danger);color:#FFFFFF;}
+
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{
+    font-size:11px;font-weight:700;
+    padding:4px 9px;border-radius:100px;
+  }
+  .tag.xray-yes{background:var(--xray-dim);color:var(--xray);}
+  .tag.xray-no{background:var(--surface-2);color:var(--muted);}
+  .tag.clickable{cursor:pointer;user-select:none;transition:transform 0.1s;}
+  .tag.clickable:hover{transform:scale(1.05);filter:brightness(1.2);}
+  .tag.resp-tag{background:var(--resp-dim);color:var(--resp);border:1px solid rgba(84,160,255,0.3);}
+  .tag.infection-tag{background:var(--infection-dim);color:var(--infection);border:1px solid rgba(255,159,67,0.4);}
+
+  .notes{font-size:13px;color:var(--muted);background:var(--surface-2);padding:8px 10px;border-radius:8px;}
+
+  .timeline{display:flex;align-items:center;gap:4px;margin-top:2px;}
+  .tl-step{flex:1;height:4px;border-radius:4px;background:var(--line);}
+  .tl-step.done{background:var(--ready);}
+  .tl-step.current{background:var(--prep);}
+  .tl-step.current-waiting{background:var(--waiting);}
+  .tl-step.current-fasttrack{background:var(--danger);}
+
+  .timer{font-size:12px;color:var(--muted);}
+  .timer.warn{color:var(--danger);font-weight:700;}
+
+  .actions{display:flex;gap:8px;margin-top:2px;}
+  .action-btn{
+    flex:1;
+    border:none;
+    border-radius:9px;
+    padding:10px;
+    font-family:inherit;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .action-btn.primary{background:var(--ready);color:#06251A;}
+  .action-btn.waiting-btn{background:var(--waiting);color:#2A2000;}
+  .action-btn.picked{background:var(--picked);color:#06203A;}
+  .action-btn.danger-outline{background:transparent;color:var(--muted);border:1px solid var(--line);flex:0 0 auto;padding:10px 12px;}
+
+  /* history */
+  .history-toggle{
+    margin-top:28px;
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--muted);
+    padding:9px 14px;
+    border-radius:10px;
+    font-family:inherit;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .history{margin-top:12px;display:none;flex-direction:column;gap:8px;}
+  .history.open{display:flex;}
+  .history-row{
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;
+    font-size:12px;color:var(--muted);
+    background:var(--surface);
+    border:1px solid var(--line);
+    padding:8px 12px;
+    border-radius:8px;
+  }
+
+  /* modal */
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.55);
+    display:none;align-items:center;justify-content:center;padding:20px;z-index:50;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:22px;
+    width:100%;
+    max-width:420px;
+    display:flex;flex-direction:column;gap:14px;
+    position:relative;
+  }
+  .modal h2{margin:0;font-size:16px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .field input, .field textarea, .field select{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:9px;
+    padding:10px 12px;
+    font-family:inherit;
+    font-size:14px;
+  }
+
+  .field textarea{resize:vertical;min-height:50px;}
+  .xray-toggle{display:flex;gap:8px;}
+  .xray-opt{
+    flex:1;text-align:center;
+    padding:10px;border-radius:9px;
+    border:1px solid var(--line);
+    background:var(--surface-2);
+    cursor:pointer;
+    font-size:13px;
+    font-weight:600;
+    color:var(--muted);
+  }
+  .xray-opt.selected-yes{background:var(--xray-dim);color:var(--xray);border-color:var(--xray);}
+  .xray-opt.selected-no{background:var(--surface-2);color:var(--text);border-color:var(--muted);}
+  .modal-actions{display:flex;gap:10px;margin-top:4px;}
+
+  /* Condition Grid Options */
+  .resp-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:8px;
+  }
+  .resp-opt{
+    padding:10px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--surface-2);
+    color:var(--muted);
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    text-align:center;
+  }
+  .resp-opt.active{
+    background:var(--resp-dim);
+    color:var(--resp);
+    border-color:var(--resp);
+  }
+
+  /* Oxygen Flow Selector */
+  .o2-flow-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface-2);
+    border: 1px solid var(--resp);
+    border-radius: 9px;
+    padding: 8px 12px;
+    margin-top: 10px;
+  }
+  .o2-flow-container span {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--resp);
+  }
+  .o2-flow-container select {
+    width: 100px;
+    background: var(--surface);
+    color: var(--resp);
+    border: 1px solid var(--resp);
+    font-weight: 700;
+    padding: 6px;
+  }
+
+  .infection-toggle{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:9px;
+    cursor:pointer;
+  }
+  .infection-toggle.active{
+    background:var(--infection-dim);
+    border-color:var(--infection);
+  }
+  .infection-toggle input[type="checkbox"]{
+    width:18px;height:18px;cursor:pointer;
+  }
+  .infection-toggle span{
+    font-size:13px;font-weight:700;color:var(--text);
+  }
+  .infection-toggle.active span{
+    color:var(--infection);
+  }
+
+  /* Choice Modal Options */
+  .choice-list{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
+  .choice-btn{
+    padding:14px;
+    border-radius:12px;
+    border:1px solid var(--line);
+    background:var(--surface-2);
+    color:var(--text);
+    font-family:inherit;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    text-align:left;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .choice-btn:hover{filter:brightness(1.15);}
+  .choice-btn.to-fasttrack{border-color:var(--danger);color:var(--danger);background:var(--danger-dim);}
+  .choice-btn.to-waiting{border-color:var(--waiting);color:var(--waiting);}
+  .choice-btn.to-ready{border-color:var(--ready);color:var(--ready);}
+
+  @media(max-width:520px){
+    header{padding:16px;}
+    main{padding:16px 16px 50px;}
+    .resp-grid{grid-template-columns:1fr;}
+  }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="title"><span class="dot"></span><h1 class="mono">CMU RR-STRETCHER</h1></div>
+  </div>
+  <div class="clock-stack mono">
+    <div id="clockDate">-</div>
+    <div id="clock">--:--:--</div>
+  </div>
+  <button class="add-btn" id="btnAdd">+ เพิ่มผู้ป่วย</button>
+</header>
+
+<main>
+  <div class="columns">
+    <section class="column">
+      <div class="column-head">
+        <span class="col-dot prep"></span>
+        <h2>กำลังพักฟื้น</h2>
+        <span class="col-count" id="countPrep">0</span>
+      </div>
+      <div class="board" id="boardPrep"></div>
+    </section>
+
+    <section class="column">
+      <div class="column-head">
+        <span class="col-dot waiting"></span>
+        <h2>Waiting area (จุดรอส่ง)</h2>
+        <span class="col-count" id="countWaiting">0</span>
+      </div>
+      <div class="board" id="boardWaiting"></div>
+    </section>
+
+    <section class="column">
+      <div class="column-head">
+        <span class="col-dot ready"></span>
+        <h2>พร้อมส่งกลับวอร์ด</h2>
+        <span class="col-count" id="countReady">0</span>
+      </div>
+      <div class="board" id="boardReady"></div>
+    </section>
+  </div>
+
+  <button class="history-toggle" id="btnHistory">ดูประวัติที่รับส่งแล้ว ▾</button>
+  <div class="history" id="history"></div>
+</main>
+
+<!-- Modal เพิ่มผู้ป่วย -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>เพิ่มผู้ป่วยเข้าสู่คิว</h2>
+    <div class="field">
+      <label>วอร์ดปลายทาง (พิมพ์หรือเลือกวอร์ด)</label>
+      <input type="text" id="wardInput" list="wardOptionsList" placeholder="พิมพ์ชื่อวอร์ดหรือเลือกจากรายการ..." autocomplete="off">
+      <datalist id="wardOptionsList">
+        <option value="Oneday chemotherapy2 (IPD)"></option>
+        <option value="Medเคมีบำบัด"></option>
+        <option value="One Day Chemo (IPD)"></option>
+        <option value="ENT โสต 1"></option>
+        <option value="ENT โสต 2"></option>
+        <option value="หอผู้ป่วยอุบัติเหตุ(รับยา ยาใน)"></option>
+        <option value="หอผู้ป่วยอุบัติเหตุ(รับยา สก)"></option>
+        <option value="Eye จักษุ1"></option>
+        <option value="Eye จักษุ2"></option>
+        <option value="หอผู้ป่วย1 (ชั้น6) ศูนย์เวชศาสตร์ผู้สูงอายุ"></option>
+        <option value="หอผู้ป่วย2 (ชั้น5) ศูนย์เวชศาสตร์ผู้สูงอายุ"></option>
+        <option value="หอผู้ป่วย3 (ชั้น4) ศูนย์เวชศาสตร์ผู้สูงอายุ"></option>
+        <option value="Gyn นรีเวชกรรม"></option>
+        <option value="IPD ER"></option>
+        <option value="รังสีรักษา(กานดาวิบูลสันติ)"></option>
+        <option value="MCI ผู้ป่วยหนักอุบัติเหตุหมู่(MCIICU)"></option>
+        <option value="Med CCU1 ผู้ป่วยหนักโรคหัวใจและหลอดเลือด1"></option>
+        <option value="Med อายุรกรรมหญิง1"></option>
+        <option value="Med อายุรกรรมหญิง2"></option>
+        <option value="Med อายุรกรรมหญิง3"></option>
+        <option value="Med ผู้ป่วยหนักอายุรกรรม"></option>
+        <option value="Med หอผู้ป่วยเปลี่ยนไต"></option>
+        <option value="หน่วยตรวจส่วนหัวใจ (IPD)"></option>
+        <option value="Med อายุรกรรมชาย1"></option>
+        <option value="Med อายุรกรรมชาย2"></option>
+        <option value="Med อายุรกรรมชาย3"></option>
+        <option value="Med วิกฤตโรคหลอดเลือดสมอง"></option>
+        <option value="Med โรคปอด"></option>
+        <option value="Med CCU2 ผู้ป่วยหนักโรคหัวใจและหลอดเลือด2"></option>
+        <option value="Med ปลูกถ่ายไขกระดูกและให้ยาเคมีบำบัดขนาดสูง"></option>
+        <option value="MIS Test"></option>
+        <option value="Gen สงฆ์อาพาธ 1"></option>
+        <option value="Gen สงฆ์อาพาธ 2"></option>
+        <option value="Gen ICU (สงฆ์)"></option>
+        <option value="Med วิกฤตอายุรกรรม1"></option>
+        <option value="Med วิกฤตอายุรกรรม2"></option>
+        <option value="Med Ventilator Dependent Unit"></option>
+        <option value="หน่วยตรวจฉุกเฉินและสังเกตอาการอย่างใกล้ชิดสูตินรีเวช"></option>
+        <option value="หน่วยผ่าตัดและพักฟื้นสูตินรีเวช"></option>
+        <option value="หน่วยคลอด"></option>
+        <option value="OB หอผู้ป่วยสูติกรรม"></option>
+        <option value="Short Day"></option>
+        <option value="Ortho วิกฤตบาดเจ็บไขสันหลัง"></option>
+        <option value="Ortho ออร์โธปิดิกส์หญิง1"></option>
+        <option value="Ortho ออร์โธปิดิกส์หญิง2"></option>
+        <option value="Ortho วิกฤตออร์โธปิดิกส์"></option>
+        <option value="Ortho ออร์โธปิดิกส์ชาย1"></option>
+        <option value="Ortho ออร์โธปิดิกส์ชาย2"></option>
+        <option value="Ortho ออร์โธปิดิกส์ชาย3"></option>
+        <option value="Ortho ออร์โธปิดิกส์เด็ก"></option>
+        <option value="สุจิณโณ 3"></option>
+        <option value="Ped กุมารเวชกรรม 1"></option>
+        <option value="Ped กุมารเวชกรรม 2"></option>
+        <option value="Ped กุมารเวชกรรม 3"></option>
+        <option value="Ped กุมารเวชกรรม 4"></option>
+        <option value="Ped กุมารเวชกรรม 5"></option>
+        <option value="Ped ผู้ป่วยหนักกุมารเวชกรรมโรคหัวใจ(PCICU)"></option>
+        <option value="Ped ผู้ป่วยหนักกุมารเวชกรรม(PICU)"></option>
+        <option value="Ped ผู้ป่วยวิกฤตทารกแรกเกิด(NCCU)"></option>
+        <option value="Ped ทารกแรกเกิด2"></option>
+        <option value="Ped ผู้ป่วยหนักทารกแรกเกิด2"></option>
+        <option value="Ped ผู้ป่วยหนักทารกแรกเกิด1"></option>
+        <option value="Pri พิเศษเฉลิมพระบารมี10"></option>
+        <option value="Pri พิเศษบุญสม 8"></option>
+        <option value="Pri พิเศษสุจิณโณ14"></option>
+        <option value="Pri พิเศษสุจิณโณ13"></option>
+        <option value="Pri พิเศษสุจิณโณ12"></option>
+        <option value="Pri พิเศษตะวัน 4"></option>
+        <option value="Pri พิเศษตะวัน 5"></option>
+        <option value="Pri พิเศษตะวัน 6"></option>
+        <option value="Pri พิเศษบุญสม 7"></option>
+        <option value="Pri พิเศษเฉลิมพระบารมี9"></option>
+        <option value="Psyจิตเวชผู้ใหญ่"></option>
+        <option value="Psy หน่วยจิตเวชเด็ก"></option>
+        <option value="Rad OPDรังสีรักษา"></option>
+        <option value="Reh ฟื้นฟูสภาพ"></option>
+        <option value="Royal Suite"></option>
+        <option value="RR_หน่วยรับ-ส่งผู้ป่วย"></option>
+        <option value="รอยืนยันห้อง"></option>
+        <option value="Surg ไฟไหม้น้ำร้อนลวก"></option>
+        <option value="Surg วิกฤตศัลยกรรมฉุกเฉิน"></option>
+        <option value="Surg ศัลยกรรมหญิง1"></option>
+        <option value="Surg ศัลยกรรมหญิง2"></option>
+        <option value="Surg ศัลยกรรมหญิง3"></option>
+        <option value="Surg ศัลยกรรมทรวงอก หัวใจและหลอดเลือด"></option>
+        <option value="Surg ศัลยกรรมประสาท"></option>
+        <option value="Surg ผู้ป่วยหนักศัลยกรรมทรวงอก หัวใจและหลอดเลือด"></option>
+        <option value="Surg ผู้ป่วยหนักศัลยกรรมทั่วไป"></option>
+        <option value="Surg ผู้ป่วยหนักศัลยกรรมประสาท"></option>
+        <option value="Surg ศัลยกรรมชาย1 (ชั้น 7 อาคารสุจิณโณ)"></option>
+        <option value="Surg ศัลยกรรมชาย2 (ชั้น 7 อาคารสุจิณโณ)"></option>
+        <option value="Surg วิกฤตศัลยกรรมทรวงอก หัวใจและหลอดเลือด"></option>
+        <option value="Surg วิกฤตศัลยกรรมประสาท"></option>
+        <option value="Surg ศัลยกรรมชาย3 (ชั้น 7 อาคารสุจิณโณ)"></option>
+        <option value="Surg วิกฤตศัลยกรรมอุบัติเหตุ"></option>
+        <option value="Surg ศัลยกรรมหญิง2 (ห้องสังเกตอาการ)"></option>
+        <option value="Surg ศัลยกรรมหญิง3 (ห้องสังเกตอาการ)"></option>
+        <option value="ห้องสลายนิ่ว(ตึกศรีพัฒน์ชั้น2)"></option>
+        <option value="ห้องส่องกล้อง ตึกสุจิณโณชั้น5"></option>
+        <option value="ห้องส่องกล้อง (IPD)"></option>
+      </datalist>
+    </div>
+    <div class="field">
+      <label>X-ray</label>
+      <div class="xray-toggle">
+        <div class="xray-opt" id="optXrayYes" data-val="yes">X-ray</div>
+        <div class="xray-opt" id="optXrayNo" data-val="no">ไม่ X-ray</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>หมายเหตุ (อุปกรณ์/ข้อควรระวัง — ไม่บังคับ)</label>
+      <textarea id="inNotes" placeholder="เช่น ต้องใช้เปลนอน, ให้ออกซิเจนระหว่างเคลื่อนย้าย"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn danger-outline" id="btnCancel" style="flex:1;">ยกเลิก</button>
+      <button class="action-btn primary" id="btnSave" style="flex:1;">เพิ่มเข้าคิว</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Condition ผู้ป่วย (ขั้นที่ 1) -->
+<div class="overlay" id="conditionOverlay">
+  <div class="modal">
+    <h2>Condition ผู้ป่วย</h2>
+    <div class="field">
+      <label>1. การหายใจ (Airway / Oxygen)</label>
+      <div class="resp-grid">
+        <div class="resp-opt" data-val="Room air">Room air</div>
+        <div class="resp-opt" data-val="Cannula">Cannula</div>
+        <div class="resp-opt" data-val="Mask c bag">Mask c bag</div>
+        <div class="resp-opt" data-val="T-piece">T-piece</div>
+        <div class="resp-opt" data-val="Ventilator" style="grid-column: span 2;">Ventilator</div>
+      </div>
+      <!-- ส่วนเลือกจำนวน O2 LPM -->
+      <div class="o2-flow-container" id="o2FlowBox" style="display: none;">
+        <span>อัตราการไหล (O₂ Flow) :</span>
+        <select id="selO2Lpm">
+          <option value="1">1 LPM</option>
+          <option value="2">2 LPM</option>
+          <option value="3" selected>3 LPM</option>
+          <option value="4">4 LPM</option>
+          <option value="5">5 LPM</option>
+          <option value="6">6 LPM</option>
+          <option value="7">7 LPM</option>
+          <option value="8">8 LPM</option>
+          <option value="9">9 LPM</option>
+          <option value="10">10 LPM</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>2. การติดเชื้อ</label>
+      <label class="infection-toggle" id="lblInfection">
+        <input type="checkbox" id="chkInfection">
+        <span>🦠 ติดเชื้อ CRE/VRE</span>
+      </label>
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="action-btn danger-outline" id="btnConditionCancel" style="flex:1;">ยกเลิก</button>
+      <button class="action-btn primary" id="btnConditionNext" style="flex:1;">ถัดไป ➔</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal เลือกจุดหมายเมื่อกดพร้อมส่ง (ขั้นที่ 2) -->
+<div class="overlay" id="choiceOverlay">
+  <div class="modal">
+    <h2>เลือกสถานะการส่งผู้ป่วย</h2>
+    <div class="choice-list">
+      <button class="choice-btn to-fasttrack" id="btnGoFastTrack">
+        <span>⚡ Fast Track</span>
+        <span>➔</span>
+      </button>
+      <button class="choice-btn to-waiting" id="btnGoWaiting">
+        <span>🟡 ย้ายไป Waiting Area</span>
+        <span>➔</span>
+      </button>
+      <button class="choice-btn to-ready" id="btnGoReady">
+        <span>🟢 พร้อมส่งกลับวอร์ด</span>
+        <span>➔</span>
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="action-btn danger-outline" id="btnChoiceCancel" style="flex:1;">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBgz68uDcAU7wwiI6Jid3aIwGEszAvjxZs",
+  authDomain: "rr-stretcher.firebaseapp.com",
+  databaseURL: "https://rr-stretcher-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rr-stretcher",
+  storageBucket: "rr-stretcher.firebasestorage.app",
+  messagingSenderId: "254228736921",
+  appId: "1:254228736921:web:333417bc7b16487f544108"
+};
+firebase.initializeApp(firebaseConfig);
+const casesRef = firebase.database().ref('cases');
+
+let cases = [];
+let xraySelection = null;
+let selectedCaseIdForChoice = null;
+let selectedRespiration = 'Room air';
+let selectedInfection = false;
+
+const URGENT_MS = 10 * 60 * 1000;
+
+const thaiDays = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+function fmtClock(){
+  const d = new Date();
+  document.getElementById('clock').textContent = d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('clockDate').textContent =
+    `วัน${thaiDays[d.getDay()]}ที่ ${d.getDate()} ${thaiMonths[d.getMonth()]} ${d.getFullYear()+543}`;
+}
+setInterval(fmtClock, 1000); fmtClock();
+
+function elapsed(ms){
+  const s = Math.floor(ms/1000);
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  const rem = s%60;
+  if(h > 0){
+    return h + ' ชม. ' + String(m).padStart(2,'0') + ' น. ' + String(rem).padStart(2,'0') + ' วิ';
+  }
+  return m + ' น. ' + String(rem).padStart(2,'0') + ' วิ';
+}
+
+function fmtTimeOnly(timestamp){
+  if(!timestamp) return '';
+  const d = new Date(timestamp);
+  return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+}
+
+function getShiftName(timestamp){
+  if(!timestamp) return '';
+  const d = new Date(timestamp);
+  const hours = d.getHours();
+  const minutes = d.getMinutes();
+  const totalMinutes = hours * 60 + minutes;
+
+  if (totalMinutes >= 480 && totalMinutes <= 960) {
+    return '☀️ เวรเช้า';
+  } else if (totalMinutes > 960 && totalMinutes <= 1439) {
+    return '⛅ เวรบ่าย';
+  } else {
+    return '🌙 เวรดึก';
+  }
+}
+
+function fmtDate(dateStr){
+  if(!dateStr) return '';
+  const [y,m,d] = dateStr.split('-');
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${parseInt(d)} ${months[parseInt(m)-1]} ${parseInt(y)+543}`;
+}
+
+casesRef.on('value', (snapshot) => {
+  const val = snapshot.val() || {};
+  cases = Object.keys(val).map(id => ({ id, ...val[id] }));
+  render();
+}, (err) => {
+  console.error('เชื่อมต่อฐานข้อมูลไม่สำเร็จ', err);
+});
+
+function render(){
+  const boardPrep = document.getElementById('boardPrep');
+  const boardWaiting = document.getElementById('boardWaiting');
+  const boardReady = document.getElementById('boardReady');
+
+  const prepping = cases.filter(c => c.status === 'preparing')
+    .sort((a,b) => a.createdAt - b.createdAt);
+  
+  const waiting = cases.filter(c => c.status === 'waiting')
+    .sort((a,b) => (a.waitingAt || a.createdAt) - (b.waitingAt || b.createdAt));
+  
+  const ready = cases.filter(c => c.status === 'ready')
+    .sort((a,b) => {
+      if (a.isFastTrack && !b.isFastTrack) return -1;
+      if (!a.isFastTrack && b.isFastTrack) return 1;
+      return (a.readyAt || 0) - (b.readyAt || 0);
+    });
+
+  document.getElementById('countPrep').textContent = prepping.length;
+  document.getElementById('countWaiting').textContent = waiting.length;
+  document.getElementById('countReady').textContent = ready.length;
+
+  boardPrep.innerHTML = prepping.length === 0
+    ? '<div class="empty">ไม่มีผู้ป่วยกำลังพักฟื้น</div>' : '';
+  boardWaiting.innerHTML = waiting.length === 0
+    ? '<div class="empty">ไม่มีผู้ป่วยใน Waiting Area</div>' : '';
+  boardReady.innerHTML = ready.length === 0
+    ? '<div class="empty">ยังไม่มีผู้ป่วยพร้อมส่ง</div>' : '';
+
+  const now = Date.now();
+
+  prepping.forEach(c => boardPrep.appendChild(buildCard(c, now)));
+  waiting.forEach(c => boardWaiting.appendChild(buildCard(c, now)));
+  ready.forEach(c => boardReady.appendChild(buildCard(c, now)));
+
+  renderHistory();
+}
+
+function buildCard(c, now){
+  const isReady = c.status === 'ready';
+  const isWaiting = c.status === 'waiting';
+  const isPrep = c.status === 'preparing';
+  const isFT = !!c.isFastTrack;
+
+  const waitMs = isReady ? now - c.readyAt : (isWaiting ? now - (c.waitingAt || c.createdAt) : 0);
+  const isUrgent = isReady && !isFT && waitMs > URGENT_MS;
+
+  const card = document.createElement('div');
+  
+  let cardStatusClass = c.status;
+  if (isFT && isReady) cardStatusClass = 'fasttrack';
+  else if (isUrgent) cardStatusClass = 'urgent';
+
+  card.className = 'card status-' + cardStatusClass;
+
+  let badgeClass = 'prep';
+  let badgeText = 'กำลังพักฟื้น';
+
+  if(isFT && isReady){
+    badgeClass = 'fasttrack'; badgeText = '⚡ Fast Track';
+  } else if(isUrgent){
+    badgeClass = 'urgent'; badgeText = '⚠ รอนาน';
+  } else if(isReady){
+    badgeClass = 'ready'; badgeText = 'พร้อมส่งกลับ';
+  } else if(isWaiting){
+    badgeClass = 'waiting'; badgeText = 'Waiting Area';
+  }
+
+  let actionsHtml = '';
+  if(isPrep){
+    actionsHtml = `
+      <div class="actions">
+        <button class="action-btn primary" data-action="open-condition" data-id="${c.id}">พร้อมส่ง</button>
+        <button class="action-btn danger-outline" data-action="remove" data-id="${c.id}">ลบ</button>
+      </div>`;
+  } else if(isWaiting){
+    actionsHtml = `
+      <div class="actions">
+        <button class="action-btn primary" data-action="to-ready" data-id="${c.id}">พร้อมส่งกลับวอร์ด</button>
+        <button class="action-btn danger-outline" data-action="remove" data-id="${c.id}">ลบ</button>
+      </div>`;
+  } else {
+    actionsHtml = `
+      <div class="actions">
+        <button class="action-btn picked" data-action="picked" data-id="${c.id}">รับผู้ป่วยแล้ว</button>
+      </div>`;
+  }
+
+  let respDisplay = '';
+  if (c.respiration && c.respiration !== 'Room air') {
+    respDisplay = c.respiration;
+    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece'].includes(c.respiration)) {
+      respDisplay += ` (${c.o2Lpm} LPM)`;
+    }
+  }
+
+  const xrayClass = c.xray === 'yes' ? 'xray-yes' : 'xray-no';
+  const xrayText = c.xray === 'yes' ? 'X-ray' : 'ไม่ X-ray';
+  const xrayTagHtml = isPrep
+    ? `<span class="tag ${xrayClass} clickable" data-action="toggle-xray" data-id="${c.id}">${xrayText} ✏️</span>`
+    : `<span class="tag ${xrayClass}">${xrayText}</span>`;
+
+  card.innerHTML = `
+    <div class="card-top">
+      <div>
+        <div class="ward-label">วอร์ดปลายทาง</div>
+        <div class="ward-name">${escapeHtml(c.ward)}</div>
+        <div class="date-line mono">${fmtDate(c.date)}</div>
+      </div>
+      <div class="card-right-info">
+        <div class="badge ${badgeClass}">${badgeText}</div>
+        <div class="created-time-tag">${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}</div>
+      </div>
+    </div>
+    <div class="tags">
+      ${xrayTagHtml}
+      ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
+      ${c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''}
+    </div>
+    ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
+    <div class="timeline">
+      <div class="tl-step done"></div>
+      <div class="tl-step ${isPrep ? 'current' : 'done'}"></div>
+      <div class="tl-step ${isWaiting ? 'current-waiting' : (isReady ? 'done' : '')}"></div>
+      <div class="tl-step ${isReady ? (isFT ? 'current-fasttrack' : 'current') : ''}"></div>
+    </div>
+    ${(isReady || isWaiting) ? `<div class="timer ${(isUrgent || isFT)?'warn':''} mono">รอมาแล้ว ${elapsed(waitMs)}</div>` : ''}
+    ${actionsHtml}
+  `;
+  return card;
+}
+
+function renderHistory(){
+  const hist = cases.filter(c => c.status === 'picked')
+    .sort((a,b) => b.pickedAt - a.pickedAt)
+    .slice(0, 15);
+  const el = document.getElementById('history');
+  if(hist.length === 0){
+    el.innerHTML = '<div class="history-row"><span>ยังไม่มีประวัติ</span></div>';
+    return;
+  }
+  el.innerHTML = hist.map(c => {
+    const duration = c.pickedAt - (c.readyAt || c.waitingAt || c.createdAt);
+    let respDisplay = '';
+    if (c.respiration && c.respiration !== 'Room air') {
+      respDisplay = c.respiration;
+      if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece'].includes(c.respiration)) {
+        respDisplay += ` (${c.o2Lpm} LPM)`;
+      }
+    }
+    const condInfo = [respDisplay, c.isInfection ? 'CRE/VRE' : ''].filter(Boolean).join(', ');
+    return `<div class="history-row">
+      <span>${fmtDate(c.date)} (${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}) · ${escapeHtml(c.ward)} ${c.isFastTrack ? '⚡[FastTrack]' : ''} ${condInfo ? `[${condInfo}]` : ''}</span>
+      <span>ใช้เวลารอ ${elapsed(duration)}</span>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+// Event Listeners สำหรับการทำงานต่างๆ ของหน้าเว็บ
+document.getElementById('btnAdd').addEventListener('click', () => {
+  document.getElementById('wardInput').value = '';
+  document.getElementById('inNotes').value = '';
+  xraySelection = null;
+  document.getElementById('optXrayYes').className = 'xray-opt';
+  document.getElementById('optXrayNo').className = 'xray-opt';
+  document.getElementById('overlay').classList.add('open');
+});
+
+document.getElementById('btnCancel').addEventListener('click', () => {
+  document.getElementById('overlay').classList.remove('open');
+});
+
+document.getElementById('optXrayYes').addEventListener('click', () => {
+  xraySelection = 'yes';
+  document.getElementById('optXrayYes').className = 'xray-opt selected-yes';
+  document.getElementById('optXrayNo').className = 'xray-opt selected-no';
+});
+
+document.getElementById('optXrayNo').addEventListener('click', () => {
+  xraySelection = 'no';
+  document.getElementById('optXrayYes').className = 'xray-opt selected-no';
+  document.getElementById('optXrayNo').className = 'xray-opt selected-yes';
+});
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  const ward = document.getElementById('wardInput').value.trim();
+  if(!ward){ alert('กรุณาระบุวอร์ดปลายทาง'); return; }
+  if(!xraySelection){ alert('กรุณาเลือกสถานะ X-ray'); return; }
+  const notes = document.getElementById('inNotes').value.trim();
+  const now = Date.now();
+  const d = new Date(now);
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+  casesRef.push({
+    ward, xray: xraySelection, notes,
+    status: 'preparing',
+    createdAt: now,
+    date: dateStr,
+    respiration: 'Room air',
+    o2Lpm: 3,
+    isInfection: false
+  });
+
+  document.getElementById('overlay').classList.remove('open');
+});
+
+// จัดการคลิกปุ่มต่างๆ ในบอร์ด
+document.querySelector('.columns').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const action = btn.dataset.action;
+  const id = btn.dataset.id;
+
+  if(action === 'remove'){
+    if(confirm('ต้องการลบรายการนี้ใช่หรือไม่?')){
+      casesRef.child(id).remove();
+    }
+  } else if(action === 'open-condition'){
+    selectedCaseIdForChoice = id;
+    selectedRespiration = 'Room air';
+    selectedInfection = false;
+    document.getElementById('chkInfection').checked = false;
+    document.getElementById('lblInfection').classList.remove('active');
+    document.querySelectorAll('.resp-opt').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.val === 'Room air');
+    });
+    document.getElementById('o2FlowBox').style.display = 'none';
+    document.getElementById('conditionOverlay').classList.add('open');
+  } else if(action === 'to-ready'){
+    casesRef.child(id).update({ status: 'ready', readyAt: Date.now() });
+  } else if(action === 'picked'){
+    casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
+  } else if(action === 'toggle-xray'){
+    const c = cases.find(x => x.id === id);
+    if(c){
+      const newXray = c.xray === 'yes' ? 'no' : 'yes';
+      casesRef.child(id).update({ xray: newXray });
+    }
+  }
+});
+
+// Condition Modal Logic
+document.querySelectorAll('.resp-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.resp-opt').forEach(o => o.classList.remove('active'));
+    opt.classList.add('active');
+    selectedRespiration = opt.dataset.val;
+    const showO2 = ['Cannula', 'Mask c bag', 'T-piece'].includes(selectedRespiration);
+    document.getElementById('o2FlowBox').style.display = showO2 ? 'flex' : 'none';
+  });
+});
+
+const lblInfection = document.getElementById('lblInfection');
+const chkInfection = document.getElementById('chkInfection');
+lblInfection.addEventListener('click', (e) => {
+  if(e.target !== chkInfection){
+    chkInfection.checked = !chkInfection.checked;
+  }
+  selectedInfection = chkInfection.checked;
+  lblInfection.classList.toggle('active', selectedInfection);
+});
+
+document.getElementById('btnConditionCancel').addEventListener('click', () => {
+  document.getElementById('conditionOverlay').classList.remove('open');
+});
+
+document.getElementById('btnConditionNext').addEventListener('click', () => {
+  document.getElementById('conditionOverlay').classList.remove('open');
+  document.getElementById('choiceOverlay').classList.add('open');
+});
+
+document.getElementById('btnChoiceCancel').addEventListener('click', () => {
+  document.getElementById('choiceOverlay').classList.remove('open');
+});
+
+// เลือกสถานะปลายทางหลังจากกรอก Condition
+const o2LpmSelect = document.getElementById('selO2Lpm');
+document.getElementById('btnGoFastTrack').addEventListener('click', () => {
+  if(!selectedCaseIdForChoice) return;
+  const now = Date.now();
+  casesRef.child(selectedCaseIdForChoice).update({
+    status: 'ready',
+    readyAt: now,
+    isFastTrack: true,
+    respiration: selectedRespiration,
+    o2Lpm: parseInt(o2LpmSelect.value),
+    isInfection: selectedInfection
+  });
+  document.getElementById('choiceOverlay').classList.remove('open');
+});
+
+document.getElementById('btnGoWaiting').addEventListener('click', () => {
+  if(!selectedCaseIdForChoice) return;
+  const now = Date.now();
+  casesRef.child(selectedCaseIdForChoice).update({
+    status: 'waiting',
+    waitingAt: now,
+    respiration: selectedRespiration,
+    o2Lpm: parseInt(o2LpmSelect.value),
+    isInfection: selectedInfection
+  });
+  document.getElementById('choiceOverlay').classList.remove('open');
+});
+
+document.getElementById('btnGoReady').addEventListener('click', () => {
+  if(!selectedCaseIdForChoice) return;
+  const now = Date.now();
+  casesRef.child(selectedCaseIdForChoice).update({
+    status: 'ready',
+    readyAt: now,
+    isFastTrack: false,
+    respiration: selectedRespiration,
+    o2Lpm: parseInt(o2LpmSelect.value),
+    isInfection: selectedInfection
+  });
+  document.getElementById('choiceOverlay').classList.remove('open');
+});
+
+// Toggle History
+const btnHistory = document.getElementById('btnHistory');
+const historyEl = document.getElementById('history');
+btnHistory.addEventListener('click', () => {
+  const isOpen = historyEl.classList.toggle('open');
+  btnHistory.textContent = isOpen ? 'ซ่อนประวัติ ▴' : 'ดูประวัติที่รับส่งแล้ว ▾';
+});
+</script>
+</body>
+</html>
