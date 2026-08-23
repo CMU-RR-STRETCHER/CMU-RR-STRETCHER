@@ -1,8 +1,3 @@
-สาเหตุที่ปุ่มแก้ไข X-ray ในแท็บกำลังพักฟื้นไม่ยอมเปลี่ยนให้ (พอกกดแล้วค้างค่าเดิม) เป็นเพราะสคริปต์ส่วนจัดการคลิก (`data-action="toggle-xray"`) ขาดเงื่อนไขเช็คสลับค่าระหว่าง `yes` กับ `no` ให้สมบูรณ์ในตัวแปรอัปเดตครับ
-
-คุณสามารถคัดลอกโค้ดทั้งหมดด้านล่างนี้ไปแทนที่ของเดิมได้เลยครับ ผมได้แก้ไขระบบสลับค่า X-ray ให้ทำงานได้อย่างถูกต้องแล้วครับ:
-
-```html
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -690,6 +685,13 @@ function fmtClock(){
 }
 setInterval(fmtClock, 1000); fmtClock();
 
+// ทำการ Render ซ้ำทุก ๆ 1 วินาที เพื่อให้เวลารันแบบ Real-time โดยไม่ต้องรีเฟรช
+setInterval(() => {
+  if (cases.length > 0) {
+    render();
+  }
+}, 1000);
+
 function elapsed(ms){
   const s = Math.floor(ms/1000);
   const h = Math.floor(s/3600);
@@ -1125,11 +1127,14 @@ document.addEventListener('click', (e) => {
       }
     }
     else if(action === 'toggle-xray'){
-      const c = cases.find(item => item.id === id);
-      if(c){
-        const nextXray = (c.xray === 'yes') ? 'no' : 'yes';
-        casesRef.child(id).update({ xray: nextXray });
-      }
+      // ดึงข้อมูลล่าสุดตรงจาก Firebase หรือค้นหาในอาเรย์แบบปลอดภัย
+      casesRef.child(id).once('value', (snapshot) => {
+        const currentData = snapshot.val();
+        if(currentData){
+          const nextXray = (currentData.xray === 'yes') ? 'no' : 'yes';
+          casesRef.child(id).update({ xray: nextXray });
+        }
+      });
     }
   }
 });
@@ -1144,5 +1149,3 @@ btnHistory.addEventListener('click', () => {
 </script>
 </body>
 </html>
-
-```
