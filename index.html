@@ -68,7 +68,6 @@
   }
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
   h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.2px;}
-  .subtitle{font-size:12px;color:var(--muted);margin-top:2px;}
   .clock-stack{
     position:absolute;
     left:50%;
@@ -238,7 +237,6 @@
     cursor:pointer;
   }
   .action-btn.primary{background:var(--ready);color:#06251A;}
-  .action-btn.waiting-btn{background:var(--waiting);color:#2A2000;}
   .action-btn.picked{background:var(--picked);color:#06203A;}
   .action-btn.danger-outline{background:transparent;color:var(--muted);border:1px solid var(--line);flex:0 0 auto;padding:10px 12px;}
 
@@ -295,6 +293,41 @@
   }
 
   .field textarea{resize:vertical;min-height:50px;}
+
+  /* Custom Search Dropdown Styles */
+  .custom-dropdown-container {
+    position: relative;
+  }
+  .dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 180px;
+    overflow-y: auto;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-top: none;
+    border-bottom-left-radius: 9px;
+    border-bottom-right-radius: 9px;
+    z-index: 100;
+    display: none;
+  }
+  .dropdown-list.show {
+    display: block;
+  }
+  .dropdown-item {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    border-bottom: 1px solid rgba(36, 69, 95, 0.4);
+  }
+  .dropdown-item:hover, .dropdown-item.active {
+    background: var(--surface);
+    color: var(--ready);
+  }
+
   .xray-toggle{display:flex;gap:8px;}
   .xray-opt{
     flex:1;text-align:center;
@@ -465,110 +498,11 @@
   <div class="modal">
     <h2>เพิ่มผู้ป่วยเข้าสู่คิว</h2>
     <div class="field">
-      <label>วอร์ดปลายทาง (พิมพ์หรือเลือกวอร์ด)</label>
-      <input type="text" id="wardInput" list="wardOptionsList" placeholder="พิมพ์ชื่อวอร์ดหรือเลือกจากรายการ..." autocomplete="off">
-      <datalist id="wardOptionsList">
-        <option value="Oneday chemotherapy2 (IPD)"></option>
-        <option value="Medเคมีบำบัด"></option>
-        <option value="One Day Chemo (IPD)"></option>
-        <option value="ENT โสต 1"></option>
-        <option value="ENT โสต 2"></option>
-        <option value="หอผู้ป่วยอุบัติเหตุ(รับยา ยาใน)"></option>
-        <option value="หอผู้ป่วยอุบัติเหตุ(รับยา สก)"></option>
-        <option value="Eye จักษุ1"></option>
-        <option value="Eye จักษุ2"></option>
-        <option value="หอผู้ป่วย1 (ชั้น6) ศูนย์เวชศาสตร์ผู้สูงอายุ"></option>
-        <option value="หอผู้ป่วย2 (ชั้น5) ศูนย์เวชศาสตร์ผู้สูงอายุ"></option>
-        <option value="หอผู้ป่วย3 (ชั้น4) ศูนย์เวชศาสตร์ผู้สูงอายุ"></option>
-        <option value="Gyn นรีเวชกรรม"></option>
-        <option value="IPD ER"></option>
-        <option value="รังสีรักษา(กานดาวิบูลสันติ)"></option>
-        <option value="MCI ผู้ป่วยหนักอุบัติเหตุหมู่(MCIICU)"></option>
-        <option value="Med CCU1 ผู้ป่วยหนักโรคหัวใจและหลอดเลือด1"></option>
-        <option value="Med อายุรกรรมหญิง1"></option>
-        <option value="Med อายุรกรรมหญิง2"></option>
-        <option value="Med อายุรกรรมหญิง3"></option>
-        <option value="Med ผู้ป่วยหนักอายุรกรรม"></option>
-        <option value="Med หอผู้ป่วยเปลี่ยนไต"></option>
-        <option value="หน่วยตรวจส่วนหัวใจ (IPD)"></option>
-        <option value="Med อายุรกรรมชาย1"></option>
-        <option value="Med อายุรกรรมชาย2"></option>
-        <option value="Med อายุรกรรมชาย3"></option>
-        <option value="Med วิกฤตโรคหลอดเลือดสมอง"></option>
-        <option value="Med โรคปอด"></option>
-        <option value="Med CCU2 ผู้ป่วยหนักโรคหัวใจและหลอดเลือด2"></option>
-        <option value="Med ปลูกถ่ายไขกระดูกและให้ยาเคมีบำบัดขนาดสูง"></option>
-        <option value="MIS Test"></option>
-        <option value="Gen สงฆ์อาพาธ 1"></option>
-        <option value="Gen สงฆ์อาพาธ 2"></option>
-        <option value="Gen ICU (สงฆ์)"></option>
-        <option value="Med วิกฤตอายุรกรรม1"></option>
-        <option value="Med วิกฤตอายุรกรรม2"></option>
-        <option value="Med Ventilator Dependent Unit"></option>
-        <option value="หน่วยตรวจฉุกเฉินและสังเกตอาการอย่างใกล้ชิดสูตินรีเวช"></option>
-        <option value="หน่วยผ่าตัดและพักฟื้นสูตินรีเวช"></option>
-        <option value="หน่วยคลอด"></option>
-        <option value="OB หอผู้ป่วยสูติกรรม"></option>
-        <option value="Short Day"></option>
-        <option value="Ortho วิกฤตบาดเจ็บไขสันหลัง"></option>
-        <option value="Ortho ออร์โธปิดิกส์หญิง1"></option>
-        <option value="Ortho ออร์โธปิดิกส์หญิง2"></option>
-        <option value="Ortho วิกฤตออร์โธปิดิกส์"></option>
-        <option value="Ortho ออร์โธปิดิกส์ชาย1"></option>
-        <option value="Ortho ออร์โธปิดิกส์ชาย2"></option>
-        <option value="Ortho ออร์โธปิดิกส์ชาย3"></option>
-        <option value="Ortho ออร์โธปิดิกส์เด็ก"></option>
-        <option value="สุจิณโณ 3"></option>
-        <option value="Ped กุมารเวชกรรม 1"></option>
-        <option value="Ped กุมารเวชกรรม 2"></option>
-        <option value="Ped กุมารเวชกรรม 3"></option>
-        <option value="Ped กุมารเวชกรรม 4"></option>
-        <option value="Ped กุมารเวชกรรม 5"></option>
-        <option value="Ped ผู้ป่วยหนักกุมารเวชกรรมโรคหัวใจ(PCICU)"></option>
-        <option value="Ped ผู้ป่วยหนักกุมารเวชกรรม(PICU)"></option>
-        <option value="Ped ผู้ป่วยวิกฤตทารกแรกเกิด(NCCU)"></option>
-        <option value="Ped ทารกแรกเกิด2"></option>
-        <option value="Ped ผู้ป่วยหนักทารกแรกเกิด2"></option>
-        <option value="Ped ผู้ป่วยหนักทารกแรกเกิด1"></option>
-        <option value="Pri พิเศษเฉลิมพระบารมี10"></option>
-        <option value="Pri พิเศษบุญสม 8"></option>
-        <option value="Pri พิเศษสุจิณโณ14"></option>
-        <option value="Pri พิเศษสุจิณโณ13"></option>
-        <option value="Pri พิเศษสุจิณโณ12"></option>
-        <option value="Pri พิเศษตะวัน 4"></option>
-        <option value="Pri พิเศษตะวัน 5"></option>
-        <option value="Pri พิเศษตะวัน 6"></option>
-        <option value="Pri พิเศษบุญสม 7"></option>
-        <option value="Pri พิเศษเฉลิมพระบารมี9"></option>
-        <option value="Psyจิตเวชผู้ใหญ่"></option>
-        <option value="Psy หน่วยจิตเวชเด็ก"></option>
-        <option value="Rad OPDรังสีรักษา"></option>
-        <option value="Reh ฟื้นฟูสภาพ"></option>
-        <option value="Royal Suite"></option>
-        <option value="RR_หน่วยรับ-ส่งผู้ป่วย"></option>
-        <option value="รอยืนยันห้อง"></option>
-        <option value="Surg ไฟไหม้น้ำร้อนลวก"></option>
-        <option value="Surg วิกฤตศัลยกรรมฉุกเฉิน"></option>
-        <option value="Surg ศัลยกรรมหญิง1"></option>
-        <option value="Surg ศัลยกรรมหญิง2"></option>
-        <option value="Surg ศัลยกรรมหญิง3"></option>
-        <option value="Surg ศัลยกรรมทรวงอก หัวใจและหลอดเลือด"></option>
-        <option value="Surg ศัลยกรรมประสาท"></option>
-        <option value="Surg ผู้ป่วยหนักศัลยกรรมทรวงอก หัวใจและหลอดเลือด"></option>
-        <option value="Surg ผู้ป่วยหนักศัลยกรรมทั่วไป"></option>
-        <option value="Surg ผู้ป่วยหนักศัลยกรรมประสาท"></option>
-        <option value="Surg ศัลยกรรมชาย1 (ชั้น 7 อาคารสุจิณโณ)"></option>
-        <option value="Surg ศัลยกรรมชาย2 (ชั้น 7 อาคารสุจิณโณ)"></option>
-        <option value="Surg วิกฤตศัลยกรรมทรวงอก หัวใจและหลอดเลือด"></option>
-        <option value="Surg วิกฤตศัลยกรรมประสาท"></option>
-        <option value="Surg ศัลยกรรมชาย3 (ชั้น 7 อาคารสุจิณโณ)"></option>
-        <option value="Surg วิกฤตศัลยกรรมอุบัติเหตุ"></option>
-        <option value="Surg ศัลยกรรมหญิง2 (ห้องสังเกตอาการ)"></option>
-        <option value="Surg ศัลยกรรมหญิง3 (ห้องสังเกตอาการ)"></option>
-        <option value="ห้องสลายนิ่ว(ตึกศรีพัฒน์ชั้น2)"></option>
-        <option value="ห้องส่องกล้อง ตึกสุจิณโณชั้น5"></option>
-        <option value="ห้องส่องกล้อง (IPD)"></option>
-      </datalist>
+      <label>วอร์ดปลายทาง (พิมพ์เพื่อค้นหาหรือเลือกวอร์ด)</label>
+      <div class="custom-dropdown-container">
+        <input type="text" id="wardInput" placeholder="พิมพ์ชื่อวอร์ดเพื่อค้นหา..." autocomplete="off">
+        <div class="dropdown-list" id="wardDropdownList"></div>
+      </div>
     </div>
     <div class="field">
       <label>X-ray</label>
@@ -674,6 +608,36 @@ let xraySelection = null;
 let selectedCaseIdForChoice = null;
 let selectedRespiration = 'Room air';
 let selectedInfection = false;
+
+// รายชื่อวอร์ดทั้งหมด
+const wardList = [
+  "Oneday chemotherapy2 (IPD)", "Medเคมีบำบัด", "One Day Chemo (IPD)", "ENT โสต 1", "ENT โสต 2",
+  "หอผู้ป่วยอุบัติเหตุ(รับยา ยาใน)", "หอผู้ป่วยอุบัติเหตุ(รับยา สก)", "Eye จักษุ1", "Eye จักษุ2",
+  "หอผู้ป่วย1 (ชั้น6) ศูนย์เวชศาสตร์ผู้สูงอายุ", "หอผู้ป่วย2 (ชั้น5) ศูนย์เวชศาสตร์ผู้สูงอายุ", "หอผู้ป่วย3 (ชั้น4) ศูนย์เวชศาสตร์ผู้สูงอายุ",
+  "Gyn นรีเวชกรรม", "IPD ER", "รังสีรักษา(กานดาวิบูลสันติ)", "MCI ผู้ป่วยหนักอุบัติเหตุหมู่(MCIICU)",
+  "Med CCU1 ผู้ป่วยหนักโรคหัวใจและหลอดเลือด1", "Med อายุรกรรมหญิง1", "Med อายุรกรรมหญิง2", "Med อายุรกรรมหญิง3",
+  "Med ผู้ป่วยหนักอายุรกรรม", "Med หอผู้ป่วยเปลี่ยนไต", "หน่วยตรวจส่วนหัวใจ (IPD)", "Med อายุรกรรมชาย1",
+  "Med อายุรกรรมชาย2", "Med อายุรกรรมชาย3", "Med วิกฤตโรคหลอดเลือดสมอง", "Med โรคปอด",
+  "Med CCU2 ผู้ป่วยหนักโรคหัวใจและหลอดเลือด2", "Med ปลูกถ่ายไขกระดูกและให้ยาเคมีบำบัดขนาดสูง", "MIS Test",
+  "Gen สงฆ์อาพาธ 1", "Gen สงฆ์อาพาธ 2", "Gen ICU (สงฆ์)", "Med วิกฤตอายุรกรรม1", "Med วิกฤตอายุรกรรม2",
+  "Med Ventilator Dependent Unit", "หน่วยตรวจฉุกเฉินและสังเกตอาการอย่างใกล้ชิดสูตินรีเวช", "หน่วยผ่าตัดและพักฟื้นสูตินรีเวช",
+  "หน่วยคลอด", "OB หอผู้ป่วยสูติกรรม", "Short Day", "Ortho วิกฤตบาดเจ็บไขสันหลัง",
+  "Ortho ออร์โธปิดิกส์หญิง1", "Ortho ออร์โธปิดิกส์หญิง2", "Ortho วิกฤตออร์โธปิดิกส์", "Ortho ออร์โธปิดิกส์ชาย1",
+  "Ortho ออร์โธปิดิกส์ชาย2", "Ortho ออร์โธปิดิกส์ชาย3", "Ortho ออร์โธปิดิกส์เด็ก", "สุจิณโณ 3",
+  "Ped กุมารเวชกรรม 1", "Ped กุมารเวชกรรม 2", "Ped กุมารเวชกรรม 3", "Ped กุมารเวชกรรม 4", "Ped กุมารเวชกรรม 5",
+  "Ped ผู้ป่วยหนักกุมารเวชกรรมโรคหัวใจ(PCICU)", "Ped ผู้ป่วยหนักกุมารเวชกรรม(PICU)", "Ped ผู้ป่วยวิกฤตทารกแรกเกิด(NCCU)",
+  "Ped ทารกแรกเกิด2", "Ped ผู้ป่วยหนักทารกแรกเกิด2", "Ped ผู้ป่วยหนักทารกแรกเกิด1", "Pri พิเศษเฉลิมพระบารมี10",
+  "Pri พิเศษบุญสม 8", "Pri พิเศษสุจิณโณ14", "Pri พิเศษสุจิณโณ13", "Pri พิเศษสุจิณโณ12", "Pri พิเศษตะวัน 4",
+  "Pri พิเศษตะวัน 5", "Pri พิเศษตะวัน 6", "Pri พิเศษบุญสม 7", "Pri พิเศษเฉลิมพระบารมี9", "Psyจิตเวชผู้ใหญ่",
+  "Psy หน่วยจิตเวชเด็ก", "Rad OPDรังสีรักษา", "Reh ฟื้นฟูสภาพ", "Royal Suite", "RR_หน่วยรับ-ส่งผู้ป่วย",
+  "รอยืนยันห้อง", "Surg ไฟไหม้น้ำร้อนลวก", "Surg วิกฤตศัลยกรรมฉุกเฉิน", "Surg ศัลยกรรมหญิง1", "Surg ศัลยกรรมหญิง2",
+  "Surg ศัลยกรรมหญิง3", "Surg ศัลยกรรมทรวงอก หัวใจและหลอดเลือด", "Surg ศัลยกรรมประสาท",
+  "Surg ผู้ป่วยหนักศัลยกรรมทรวงอก หัวใจและหลอดเลือด", "Surg ผู้ป่วยหนักศัลยกรรมทั่วไป", "Surg ผู้ป่วยหนักศัลยกรรมประสาท",
+  "Surg ศัลยกรรมชาย1 (ชั้น 7 อาคารสุจิณโณ)", "Surg ศัลยกรรมชาย2 (ชั้น 7 อาคารสุจิณโณ)", "Surg วิกฤตศัลยกรรมทรวงอก หัวใจและหลอดเลือด",
+  "Surg วิกฤตศัลยกรรมประสาท", "Surg ศัลยกรรมชาย3 (ชั้น 7 อาคารสุจิณโณ)", "Surg วิกฤตศัลยกรรมอุบัติเหตุ",
+  "Surg ศัลยกรรมหญิง2 (ห้องสังเกตอาการ)", "Surg ศัลยกรรมหญิง3 (ห้องสังเกตอาการ)", "ห้องสลายนิ่ว(ตึกศรีพัฒน์ชั้น2)",
+  "ห้องส่องกล้อง ตึกสุจิณโณชั้น5", "ห้องส่องกล้อง (IPD)"
+];
 
 const URGENT_MS = 10 * 60 * 1000;
 
@@ -899,172 +863,232 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
-// Event Listeners สำหรับการทำงานต่างๆ ของหน้าเว็บ
+// Modal เพิ่มผู้ป่วยและการค้นหาวอร์ดแบบ Custom Dropdown
+const overlay = document.getElementById('overlay');
+const wardInput = document.getElementById('wardInput');
+const wardDropdownList = document.getElementById('wardDropdownList');
+
+function updateWardDropdown(filterText = ''){
+  const filtered = wardList.filter(w => w.toLowerCase().includes(filterText.toLowerCase()));
+  if(filtered.length === 0){
+    wardDropdownList.innerHTML = '<div class="dropdown-item" style="color:var(--muted);">ไม่พบวอร์ดที่ค้นหา (สามารถพิมพ์เพิ่มเองได้)</div>';
+  } else {
+    wardDropdownList.innerHTML = filtered.map(w => `<div class="dropdown-item" data-value="${escapeHtml(w)}">${escapeHtml(w)}</div>`).join('');
+  }
+  wardDropdownList.classList.add('show');
+}
+
+wardInput.addEventListener('input', (e) => {
+  updateWardDropdown(e.target.value);
+});
+
+wardInput.addEventListener('focus', () => {
+  updateWardDropdown(wardInput.value);
+});
+
+wardDropdownList.addEventListener('click', (e) => {
+  const item = e.target.closest('.dropdown-item');
+  if(item && item.getAttribute('data-value')){
+    wardInput.value = item.getAttribute('data-value');
+    wardDropdownList.classList.remove('show');
+  }
+});
+
+// ปิด dropdown เมื่อคลิกนอกช่องกรอก
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('.custom-dropdown-container')){
+    wardDropdownList.classList.remove('show');
+  }
+});
+
 document.getElementById('btnAdd').addEventListener('click', () => {
-  document.getElementById('wardInput').value = '';
+  wardInput.value = '';
   document.getElementById('inNotes').value = '';
   xraySelection = null;
   document.getElementById('optXrayYes').className = 'xray-opt';
   document.getElementById('optXrayNo').className = 'xray-opt';
-  document.getElementById('overlay').classList.add('open');
+  overlay.classList.add('open');
 });
 
 document.getElementById('btnCancel').addEventListener('click', () => {
-  document.getElementById('overlay').classList.remove('open');
+  overlay.classList.remove('open');
+  wardDropdownList.classList.remove('show');
 });
 
-document.getElementById('optXrayYes').addEventListener('click', () => {
-  xraySelection = 'yes';
-  document.getElementById('optXrayYes').className = 'xray-opt selected-yes';
-  document.getElementById('optXrayNo').className = 'xray-opt selected-no';
-});
-
-document.getElementById('optXrayNo').addEventListener('click', () => {
-  xraySelection = 'no';
-  document.getElementById('optXrayYes').className = 'xray-opt selected-no';
-  document.getElementById('optXrayNo').className = 'xray-opt selected-yes';
+document.querySelectorAll('.xray-opt').forEach(opt => {
+  opt.addEventListener('click', (e) => {
+    xraySelection = e.target.getAttribute('data-val');
+    document.getElementById('optXrayYes').className = 'xray-opt' + (xraySelection === 'yes' ? ' selected-yes' : '');
+    document.getElementById('optXrayNo').className = 'xray-opt' + (xraySelection === 'no' ? ' selected-no' : '');
+  });
 });
 
 document.getElementById('btnSave').addEventListener('click', () => {
-  const ward = document.getElementById('wardInput').value.trim();
-  if(!ward){ alert('กรุณาระบุวอร์ดปลายทาง'); return; }
-  if(!xraySelection){ alert('กรุณาเลือกสถานะ X-ray'); return; }
+  const ward = wardInput.value.trim();
   const notes = document.getElementById('inNotes').value.trim();
-  const now = Date.now();
-  const d = new Date(now);
-  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  if(!ward){
+    alert('กรุณาระบุหรือเลือกวอร์ดปลายทาง');
+    return;
+  }
+  if(!xraySelection){
+    alert('กรุณาเลือกว่า X-ray หรือไม่');
+    return;
+  }
+
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
 
   casesRef.push({
-    ward, xray: xraySelection, notes,
+    ward,
+    xray: xraySelection,
+    notes,
     status: 'preparing',
-    createdAt: now,
+    createdAt: now.getTime(),
     date: dateStr,
     respiration: 'Room air',
     o2Lpm: 3,
-    isInfection: false
+    isInfection: false,
+    isFastTrack: false
+  }, (err) => {
+    if(err){
+      alert('บันทึกข้อมูลไม่สำเร็จ: ' + err.message);
+    } else {
+      overlay.classList.remove('open');
+      wardDropdownList.classList.remove('show');
+    }
   });
-
-  document.getElementById('overlay').classList.remove('open');
-});
-
-// จัดการคลิกปุ่มต่างๆ ในบอร์ด
-document.querySelector('.columns').addEventListener('click', (e) => {
-  const btn = e.target.closest('button');
-  if(!btn) return;
-  const action = btn.dataset.action;
-  const id = btn.dataset.id;
-
-  if(action === 'remove'){
-    if(confirm('ต้องการลบรายการนี้ใช่หรือไม่?')){
-      casesRef.child(id).remove();
-    }
-  } else if(action === 'open-condition'){
-    selectedCaseIdForChoice = id;
-    selectedRespiration = 'Room air';
-    selectedInfection = false;
-    document.getElementById('chkInfection').checked = false;
-    document.getElementById('lblInfection').classList.remove('active');
-    document.querySelectorAll('.resp-opt').forEach(opt => {
-      opt.classList.toggle('active', opt.dataset.val === 'Room air');
-    });
-    document.getElementById('o2FlowBox').style.display = 'none';
-    document.getElementById('conditionOverlay').classList.add('open');
-  } else if(action === 'to-ready'){
-    casesRef.child(id).update({ status: 'ready', readyAt: Date.now() });
-  } else if(action === 'picked'){
-    casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
-  } else if(action === 'toggle-xray'){
-    const c = cases.find(x => x.id === id);
-    if(c){
-      const newXray = c.xray === 'yes' ? 'no' : 'yes';
-      casesRef.child(id).update({ xray: newXray });
-    }
-  }
 });
 
 // Condition Modal Logic
+const conditionOverlay = document.getElementById('conditionOverlay');
 document.querySelectorAll('.resp-opt').forEach(opt => {
-  opt.addEventListener('click', () => {
+  opt.addEventListener('click', (e) => {
     document.querySelectorAll('.resp-opt').forEach(o => o.classList.remove('active'));
-    opt.classList.add('active');
-    selectedRespiration = opt.dataset.val;
-    const showO2 = ['Cannula', 'Mask c bag', 'T-piece'].includes(selectedRespiration);
-    document.getElementById('o2FlowBox').style.display = showO2 ? 'flex' : 'none';
+    e.target.classList.add('active');
+    selectedRespiration = e.target.getAttribute('data-val');
+    
+    const o2Box = document.getElementById('o2FlowBox');
+    if (['Cannula', 'Mask c bag', 'T-piece'].includes(selectedRespiration)) {
+      o2Box.style.display = 'flex';
+    } else {
+      o2Box.style.display = 'none';
+    }
   });
 });
 
 const lblInfection = document.getElementById('lblInfection');
 const chkInfection = document.getElementById('chkInfection');
-lblInfection.addEventListener('click', (e) => {
-  if(e.target !== chkInfection){
-    chkInfection.checked = !chkInfection.checked;
+chkInfection.addEventListener('change', (e) => {
+  selectedInfection = e.target.checked;
+  if(selectedInfection) {
+    lblInfection.classList.add('active');
+  } else {
+    lblInfection.classList.remove('active');
   }
-  selectedInfection = chkInfection.checked;
-  lblInfection.classList.toggle('active', selectedInfection);
 });
 
 document.getElementById('btnConditionCancel').addEventListener('click', () => {
-  document.getElementById('conditionOverlay').classList.remove('open');
+  conditionOverlay.classList.remove('open');
 });
 
 document.getElementById('btnConditionNext').addEventListener('click', () => {
-  document.getElementById('conditionOverlay').classList.remove('open');
+  conditionOverlay.classList.remove('open');
   document.getElementById('choiceOverlay').classList.add('open');
 });
 
+// Choice Modal Logic
+const choiceOverlay = document.getElementById('choiceOverlay');
 document.getElementById('btnChoiceCancel').addEventListener('click', () => {
-  document.getElementById('choiceOverlay').classList.remove('open');
+  choiceOverlay.classList.remove('open');
 });
 
-// เลือกสถานะปลายทางหลังจากกรอก Condition
-const o2LpmSelect = document.getElementById('selO2Lpm');
+function applyConditionAndStatus(newStatus, isFastTrack = false){
+  if(!selectedCaseIdForChoice) return;
+  const o2LpmVal = parseInt(document.getElementById('selO2Lpm').value) || 3;
+  const updates = {
+    respiration: selectedRespiration,
+    o2Lpm: o2LpmVal,
+    isInfection: selectedInfection,
+    status: newStatus,
+    isFastTrack: isFastTrack
+  };
+  const now = Date.now();
+  if(newStatus === 'ready') updates.readyAt = now;
+  if(newStatus === 'waiting') updates.waitingAt = now;
+
+  casesRef.child(selectedCaseIdForChoice).update(updates, (err) => {
+    if(err){
+      alert('อัปเดตสถานะไม่สำเร็จ: ' + err.message);
+    } else {
+      choiceOverlay.classList.remove('open');
+      selectedCaseIdForChoice = null;
+    }
+  });
+}
+
 document.getElementById('btnGoFastTrack').addEventListener('click', () => {
-  if(!selectedCaseIdForChoice) return;
-  const now = Date.now();
-  casesRef.child(selectedCaseIdForChoice).update({
-    status: 'ready',
-    readyAt: now,
-    isFastTrack: true,
-    respiration: selectedRespiration,
-    o2Lpm: parseInt(o2LpmSelect.value),
-    isInfection: selectedInfection
-  });
-  document.getElementById('choiceOverlay').classList.remove('open');
+  applyConditionAndStatus('ready', true);
 });
-
 document.getElementById('btnGoWaiting').addEventListener('click', () => {
-  if(!selectedCaseIdForChoice) return;
-  const now = Date.now();
-  casesRef.child(selectedCaseIdForChoice).update({
-    status: 'waiting',
-    waitingAt: now,
-    respiration: selectedRespiration,
-    o2Lpm: parseInt(o2LpmSelect.value),
-    isInfection: selectedInfection
-  });
-  document.getElementById('choiceOverlay').classList.remove('open');
+  applyConditionAndStatus('waiting', false);
 });
-
 document.getElementById('btnGoReady').addEventListener('click', () => {
-  if(!selectedCaseIdForChoice) return;
-  const now = Date.now();
-  casesRef.child(selectedCaseIdForChoice).update({
-    status: 'ready',
-    readyAt: now,
-    isFastTrack: false,
-    respiration: selectedRespiration,
-    o2Lpm: parseInt(o2LpmSelect.value),
-    isInfection: selectedInfection
-  });
-  document.getElementById('choiceOverlay').classList.remove('open');
+  applyConditionAndStatus('ready', false);
 });
 
-// Toggle History
+// Actions Click Handler
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if(btn){
+    const action = btn.getAttribute('data-action');
+    const id = btn.getAttribute('data-id');
+
+    if(action === 'open-condition'){
+      selectedCaseIdForChoice = id;
+      selectedRespiration = 'Room air';
+      selectedInfection = false;
+      chkInfection.checked = false;
+      lblInfection.classList.remove('active');
+      document.querySelectorAll('.resp-opt').forEach(o => {
+        if(o.getAttribute('data-val') === 'Room air') o.classList.add('active');
+        else o.classList.remove('active');
+      });
+      document.getElementById('o2FlowBox').style.display = 'none';
+      conditionOverlay.classList.add('open');
+    }
+    else if(action === 'to-ready'){
+      casesRef.child(id).update({
+        status: 'ready',
+        readyAt: Date.now()
+      });
+    }
+    else if(action === 'picked'){
+      casesRef.child(id).update({
+        status: 'picked',
+        pickedAt: Date.now()
+      });
+    }
+    else if(action === 'remove'){
+      if(confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')){
+        casesRef.child(id).remove();
+      }
+    }
+    else if(action === 'toggle-xray'){
+      const c = cases.find(item => item.id === id);
+      if(c){
+        const nextXray = c.xray === 'yes' ? 'no' : 'yes';
+        casesRef.child(id).update({ xray: nextXray });
+      }
+    }
+  }
+});
+
+// History Toggle
 const btnHistory = document.getElementById('btnHistory');
 const historyEl = document.getElementById('history');
 btnHistory.addEventListener('click', () => {
-  const isOpen = historyEl.classList.toggle('open');
-  btnHistory.textContent = isOpen ? 'ซ่อนประวัติ ▴' : 'ดูประวัติที่รับส่งแล้ว ▾';
+  historyEl.classList.toggle('open');
+  btnHistory.textContent = historyEl.classList.contains('open') ? 'ซ่อนประวัติ ▴' : 'ดูประวัติที่รับส่งแล้ว ▾';
 });
 </script>
 </body>
