@@ -685,7 +685,6 @@ function fmtClock(){
 }
 setInterval(fmtClock, 1000); fmtClock();
 
-// ทำการ Render ซ้ำทุก ๆ 1 วินาที เพื่อให้เวลารันแบบ Real-time โดยไม่ต้องรีเฟรช
 setInterval(() => {
   if (cases.length > 0) {
     render();
@@ -947,6 +946,160 @@ wardDropdownList.addEventListener('click', (e) => {
     wardDropdownList.classList.remove('show');
   }
 });
+
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('.custom-dropdown-container')){
+    wardDropdownList.classList.remove('show');
+  }
+});
+
+// Event Listeners สำหรับการใช้งาน Modal ต่างๆ
+document.getElementById('btnAdd').addEventListener('click', () => {
+  wardInput.value = '';
+  document.getElementById('inNotes').value = '';
+  xraySelection = null;
+  document.getElementById('optXrayYes').className = 'xray-opt';
+  document.getElementById('optXrayNo').className = 'xray-opt';
+  overlay.classList.add('open');
+});
+
+document.getElementById('btnCancel').addEventListener('click', () => {
+  overlay.classList.remove('open');
+});
+
+document.getElementById('optXrayYes').addEventListener('click', function(){
+  xraySelection = 'yes';
+  this.className = 'xray-opt selected-yes';
+  document.getElementById('optXrayNo').className = 'xray-opt';
+});
+
+document.getElementById('optXrayNo').addEventListener('click', function(){
+  xraySelection = 'no';
+  this.className = 'xray-opt selected-no';
+  document.getElementById('optXrayYes').className = 'xray-opt';
+});
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  const ward = wardInput.value.trim();
+  if(!ward){ alert('กรุณาระบุวอร์ดปลายทาง'); return; }
+  if(!xraySelection){ alert('กรุณาเลือกสถานะ X-ray'); return; }
+
+  const d = new Date();
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+  casesRef.push({
+    ward: ward,
+    xray: xraySelection,
+    notes: document.getElementById('inNotes').value.trim(),
+    status: 'preparing',
+    createdAt: Date.now(),
+    date: dateStr
+  });
+
+  overlay.classList.remove('open');
+});
+
+document.getElementById('btnHistory').addEventListener('click', () => {
+  document.getElementById('history').classList.toggle('open');
+});
+
+// จัดการการกดปุ่มแอ็กชันบน Card
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  const action = btn.getAttribute('data-action');
+  const id = btn.getAttribute('data-id');
+
+  if(action === 'remove'){
+    if(confirm('ต้องการลบรายการนี้ใช่หรือไม่?')){
+      casesRef.child(id).remove();
+    }
+  } else if(action === 'picked'){
+    casesRef.child(id).update({
+      status: 'picked',
+      pickedAt: Date.now()
+    });
+  } else if(action === 'toggle-xray'){
+    const c = cases.find(item => item.id === id);
+    if(c){
+      casesRef.child(id).update({ xray: c.xray === 'yes' ? 'no' : 'yes' });
+    }
+  } else if(action === 'open-condition'){
+    selectedCaseIdForChoice = id;
+    openConditionModal();
+  }
+});
+
+// Condition Modal & Choice Modal Logic
+const conditionOverlay = document.getElementById('conditionOverlay');
+const choiceOverlay = document.getElementById('choiceOverlay');
+const o2FlowBox = document.getElementById('o2FlowBox');
+
+document.querySelectorAll('.resp-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.resp-opt').forEach(o => o.classList.remove('active'));
+    opt.classList.add('active');
+    selectedRespiration = opt.getAttribute('data-val');
+    if(['Cannula', 'Mask c bag', 'T-piece'].includes(selectedRespiration)){
+      o2FlowBox.style.display = 'flex';
+    } else {
+      o2FlowBox.style.display = 'none';
+    }
+  });
+});
+
+document.getElementById('chkInfection').addEventListener('change', (e) => {
+  selectedInfection = e.target.checked;
+  const lbl = document.getElementById('lblInfection');
+  if(selectedInfection) lbl.classList.add('active');
+  else lbl.classList.remove('active');
+});
+
+function openConditionModal(){
+  selectedRespiration = 'Room air';
+  selectedInfection = false;
+  document.querySelectorAll('.resp-opt').forEach(o => o.classList.remove('active'));
+  document.querySelector('.resp-opt[data-val="Room air"]').classList.add('active');
+  o2FlowBox.style.display = 'none';
+  document.getElementById('chkInfection').checked = false;
+  document.getElementById('lblInfection').classList.remove('active');
+  conditionOverlay.classList.add('open');
+}
+
+document.getElementById('btnConditionCancel').addEventListener('click', () => {
+  conditionOverlay.classList.remove('open');
+});
+
+document.getElementById('btnConditionNext').addEventListener('click', () => {
+  conditionOverlay.classList.remove('open');
+  choiceOverlay.classList.add('open');
+});
+
+document.getElementById('btnChoiceCancel').addEventListener('click', () => {
+  choiceOverlay.classList.remove('open');
+});
+
+function updateCaseStatus(status, isFastTrack = false){
+  if(!selectedCaseIdForChoice) return;
+  const updateData = {
+    status: status,
+    respiration: selectedRespiration,
+    isInfection: selectedInfection,
+    isFastTrack: isFastTrack
+  };
+  if(['Cannula', 'Mask c bag', 'T-piece'].includes(selectedRespiration)){
+    updateData.o2Lpm = document.getElementById('selO2Lpm').value;
+  }
+  if(status === 'waiting') updateData.waitingAt = Date.now();
+  if(status === 'ready') updateData.readyAt = Date.now();
+
+  casesRef.child(selectedCaseIdForChoice).update(updateData);
+  choiceOverlay.classList.remove('open');
+}
+
+document.getElementById('btnGoFastTrack').addEventListener('click', () => updateCaseStatus('ready', true));
+document.getElementById('btnGoWaiting').addEventListener('click', () => updateCaseStatus('waiting', false));
+document.getElementById('btnGoReady').addEventListener('click', () => updateCaseStatus('ready', false));
 </script>
 </body>
 </html>
