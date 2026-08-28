@@ -813,7 +813,7 @@ function buildCard(c, now){
   } else if(isWaiting){
     actionsHtml = `
       <div class="actions">
-        <button class="action-btn primary" data-action="to-ready" data-id="${c.id}">พร้อมส่งกลับวอร์ด</button>
+        <button class="action-btn picked" data-action="picked" data-id="${c.id}">รับผู้ป่วยแล้ว</button>
         <button class="action-btn danger-outline" data-action="remove" data-id="${c.id}">ลบ</button>
       </div>`;
   } else {
