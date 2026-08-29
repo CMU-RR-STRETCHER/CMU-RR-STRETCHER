@@ -835,6 +835,19 @@ function cardTimeLabel(c){
   return `${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}`;
 }
 
+// นาทีในวัน ใช้สำหรับเรียงลำดับตาม Time in RR (fallback เป็นเวลาที่กดเพิ่มเข้าระบบถ้าไม่ได้กรอก)
+function timeInRRMinutes(c){
+  if(c.timeInRR){
+    const [hh, mm] = c.timeInRR.split(':').map(Number);
+    return hh * 60 + mm;
+  }
+  if(c.createdAt){
+    const d = new Date(c.createdAt);
+    return d.getHours() * 60 + d.getMinutes();
+  }
+  return 0;
+}
+
 function fmtDate(dateStr){
   if(!dateStr) return '';
   const [y,m,d] = dateStr.split('-');
@@ -879,7 +892,7 @@ function render(){
     .sort((a,b) => {
       if (a.isFastTrack && !b.isFastTrack) return -1;
       if (!a.isFastTrack && b.isFastTrack) return 1;
-      return (a.readyAt || 0) - (b.readyAt || 0);
+      return timeInRRMinutes(a) - timeInRRMinutes(b);
     });
 
   document.getElementById('countPreop').textContent = preop.length;
