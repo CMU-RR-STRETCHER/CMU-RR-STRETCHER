@@ -1160,9 +1160,8 @@ function render(){
   
   const ready = cases.filter(c => c.status === 'ready')
     .sort((a,b) => {
-      const rankOf = c => c.isFastTrack ? 0 : (c.isVIP ? 1 : 2);
-      const ra = rankOf(a), rb = rankOf(b);
-      if(ra !== rb) return ra - rb;
+      if (a.isFastTrack && !b.isFastTrack) return -1;
+      if (!a.isFastTrack && b.isFastTrack) return 1;
       return timeInRRMinutes(a) - timeInRRMinutes(b);
     });
 
