@@ -100,19 +100,26 @@
   }
   .add-btn:hover{filter:brightness(1.08);}
 
-  main{padding:20px 24px 60px;max-width:1400px;margin:0 auto;}
+  main{padding:20px 24px 60px;max-width:1600px;margin:0 auto;}
 
   .columns{
     display:grid;
     grid-template-columns:repeat(4, 1fr);
-    gap:20px;
-    align-items:start;
+    gap:16px;
+    align-items:stretch;
+  }
+  .column{
+    display:flex;
+    flex-direction:column;
+    height:calc(100vh - 210px);
+    min-height:320px;
   }
   .column-head{
     display:flex;
     align-items:center;
     gap:8px;
     margin-bottom:12px;
+    flex:0 0 auto;
   }
   .column-head h2{font-size:14px;margin:0;font-weight:700;letter-spacing:.2px;}
   .col-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
@@ -143,18 +150,34 @@
     white-space:nowrap;
   }
   .add-btn-small:hover{filter:brightness(1.08);}
-  @media(max-width:1200px){
-    .columns{grid-template-columns:1fr 1fr;}
+  @media(max-width:1100px){
+    .card{padding:13px;gap:10px;}
+    .ward-name{font-size:16px;}
+    .badge, .tag{font-size:10px;padding:4px 8px;}
+    .created-time-tag{font-size:10px;padding:2px 6px;}
+    .columns{gap:12px;}
+    .column-head h2{font-size:12.5px;}
+    .action-btn{font-size:12px;padding:9px;}
   }
-  @media(max-width:640px){
+  @media(max-width:680px){
     .columns{grid-template-columns:1fr;}
+    .column{height:auto;min-height:0;}
+    .board{overflow-y:visible;flex:none;padding-right:0;}
   }
 
   .board{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    display:flex;
+    flex-direction:column;
     gap:14px;
+    flex:1 1 auto;
+    overflow-y:auto;
+    padding-right:4px;
+    scrollbar-width:thin;
+    scrollbar-color:var(--line) transparent;
   }
+  .board::-webkit-scrollbar{width:6px;}
+  .board::-webkit-scrollbar-track{background:transparent;}
+  .board::-webkit-scrollbar-thumb{background:var(--line);border-radius:10px;}
   .empty{
     grid-column:1/-1;
     text-align:center;
