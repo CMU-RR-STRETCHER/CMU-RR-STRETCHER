@@ -313,6 +313,27 @@
   }
 
   .field textarea{resize:vertical;min-height:50px;}
+  .time-picker{display:flex;align-items:center;gap:6px;}
+  .time-picker select{
+    flex:1;
+    text-align:center;
+    font-size:16px;
+    font-weight:700;
+  }
+  .time-sep{font-weight:700;color:var(--muted);}
+  .time-now-btn{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:10px 14px;
+    border-radius:9px;
+    font-family:inherit;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .time-now-btn:hover{filter:brightness(1.15);}
   .xray-toggle{display:flex;gap:8px;}
   .xray-opt{
     flex:1;text-align:center;
@@ -591,7 +612,12 @@
     </div>
     <div class="field">
       <label>Time in RR (เวลาที่เข้าห้องพักฟื้น)</label>
-      <input type="time" id="inTimeInRR">
+      <div class="time-picker">
+        <select id="selRRHour"></select>
+        <span class="time-sep">:</span>
+        <select id="selRRMinute"></select>
+        <button type="button" class="time-now-btn" id="btnRRNow">ตอนนี้</button>
+      </div>
     </div>
     <div class="field">
       <label>X-ray</label>
@@ -753,6 +779,36 @@ function nowHHMM(){
   const d = new Date();
   return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
 }
+
+function populateTimeSelectors(){
+  const hourSel = document.getElementById('selRRHour');
+  const minSel = document.getElementById('selRRMinute');
+  for(let h=0; h<24; h++){
+    const opt = document.createElement('option');
+    opt.value = String(h).padStart(2,'0');
+    opt.textContent = String(h).padStart(2,'0') + ' น.';
+    hourSel.appendChild(opt);
+  }
+  for(let m=0; m<60; m++){
+    const opt = document.createElement('option');
+    opt.value = String(m).padStart(2,'0');
+    opt.textContent = String(m).padStart(2,'0');
+    minSel.appendChild(opt);
+  }
+}
+populateTimeSelectors();
+
+function setTimeInRRValue(hhmm){
+  const [hh, mm] = hhmm.split(':');
+  document.getElementById('selRRHour').value = hh;
+  document.getElementById('selRRMinute').value = mm;
+}
+function getTimeInRRValue(){
+  return document.getElementById('selRRHour').value + ':' + document.getElementById('selRRMinute').value;
+}
+document.getElementById('btnRRNow').addEventListener('click', () => {
+  setTimeInRRValue(nowHHMM());
+});
 
 function shiftNameForMinutes(totalMinutes){
   if (totalMinutes >= 480 && totalMinutes <= 960) {
@@ -992,7 +1048,7 @@ function escapeHtml(str){
 document.getElementById('btnAdd').addEventListener('click', () => {
   document.getElementById('wardInput').value = '';
   document.getElementById('inNotes').value = '';
-  document.getElementById('inTimeInRR').value = nowHHMM();
+  setTimeInRRValue(nowHHMM());
   xraySelection = null;
   document.getElementById('optXrayYes').className = 'xray-opt';
   document.getElementById('optXrayNo').className = 'xray-opt';
@@ -1053,7 +1109,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
   pendingWard = ward;
   pendingXray = xraySelection;
   pendingNotes = notes;
-  pendingTimeInRR = document.getElementById('inTimeInRR').value;
+  pendingTimeInRR = getTimeInRRValue();
 
   document.getElementById('overlay').classList.remove('open');
 
