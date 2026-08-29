@@ -335,6 +335,14 @@
     align-items:center;
     justify-content:space-between;
   }
+  .history-retention-note{
+    font-size:11.5px;
+    color:var(--muted);
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:8px 12px;
+  }
   .history-search{
     flex:1;
     min-width:200px;
@@ -672,6 +680,7 @@
         <button class="history-tool-btn" id="btnPrintHistory">🖨 พิมพ์รายงาน</button>
       </div>
     </div>
+    <div class="history-retention-note">⏳ เก็บประวัติย้อนหลังไว้ 90 วัน ข้อมูลที่เก่ากว่านี้จะถูกลบอัตโนมัติและดูย้อนหลังไม่ได้ — ถ้าต้องเก็บรายงานไว้ ให้ Export CSV หรือพิมพ์เก็บไว้ก่อนหมดอายุ</div>
     <div class="history-summary" id="historySummary"></div>
     <div class="history-groups" id="historyGroups"></div>
   </div>
@@ -975,6 +984,10 @@ let pendingDeliverCaseId = null;
 const WARN_MS = 30 * 60 * 1000;
 const URGENT_MS = 60 * 60 * 1000;
 
+// เก็บประวัติย้อนหลังไว้ 90 วัน เกินจากนี้ลบอัตโนมัติ
+const HISTORY_RETENTION_DAYS = 90;
+const HISTORY_RETENTION_MS = HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
 const thaiDays = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
 const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 function fmtClock(){
@@ -1086,9 +1099,23 @@ casesRef.on('value', (snapshot) => {
   const val = snapshot.val() || {};
   cases = Object.keys(val).map(id => ({ id, ...val[id] }));
   render();
+  cleanupOldHistory();
 }, (err) => {
   console.error('เชื่อมต่อฐานข้อมูลไม่สำเร็จ', err);
 });
+
+// ลบเคสในประวัติ (สถานะ picked / preop-picked) ที่เก่ากว่า 90 วันออกจาก Firebase อัตโนมัติ
+function cleanupOldHistory(){
+  const cutoff = Date.now() - HISTORY_RETENTION_MS;
+  cases.forEach(c => {
+    if(c.status === 'picked' || c.status === 'preop-picked'){
+      const recordTime = c.pickedAt || c.createdAt || 0;
+      if(recordTime && recordTime < cutoff){
+        casesRef.child(c.id).remove();
+      }
+    }
+  });
+}
 
 // อัปเดตตัวนับเวลา (รอมาแล้ว) แบบ real-time ทุกวินาที โดยไม่ต้องรอข้อมูลจาก Firebase เปลี่ยน
 setInterval(() => {
