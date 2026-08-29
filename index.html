@@ -1063,10 +1063,14 @@ const sentOutPlayer = makeAudioPlayer(RORO_SOUND_SRC, 3);
 
 function unlockAudio(){
   [...readyPlayer.pool, ...sentOutPlayer.pool].forEach(a => {
+    a.muted = true; // ปิดเสียงไว้ตอนปลดล็อก กันไม่ให้มีเสียงแว้บทุกครั้งที่แตะจอ
     a.play().then(() => {
       a.pause();
       a.currentTime = 0;
-    }).catch(() => {});
+      a.muted = false; // เปิดเสียงกลับมา พร้อมใช้เล่นแจ้งเตือนจริง
+    }).catch(() => {
+      a.muted = false;
+    });
   });
 }
 document.addEventListener('touchstart', unlockAudio);
