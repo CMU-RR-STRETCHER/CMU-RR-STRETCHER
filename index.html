@@ -109,6 +109,21 @@
   }
   .add-btn:hover{filter:brightness(1.08);}
 
+  .sound-test-btn{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    width:38px;
+    height:38px;
+    border-radius:10px;
+    font-size:16px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .sound-test-btn:hover{filter:brightness(1.15);}
+
   main{padding:20px 24px 60px;max-width:1600px;margin:0 auto;}
 
   .columns{
@@ -650,6 +665,7 @@
     <div id="clockDate">-</div>
     <div id="clock">--:--:--</div>
   </div>
+  <button class="sound-test-btn" id="btnTestSound" title="ทดสอบเสียงแจ้งเตือน">🔊</button>
   <button class="add-btn" id="btnAdd">+ เพิ่มผู้ป่วย</button>
 </header>
 
@@ -1020,9 +1036,32 @@ const thaiDays = ['อาทิตย์','จันทร์','อังคา�
 const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 
 // เสียงแจ้งเตือนเมื่อมีเคสพร้อมส่งกลับวอร์ด (สังเคราะห์เสียงเอง ไม่ต้องใช้ไฟล์เสียง)
+// ใช้ AudioContext ตัวเดียวที่ปลดล็อกจากการแตะหน้าจอครั้งแรก เพื่อให้เล่นเสียงได้บน iPad/iOS Safari
+// (iOS จะบล็อกเสียงที่เล่นจากเหตุการณ์ที่ไม่ได้มาจากการแตะโดยตรง เช่น ข้อมูลที่อัปเดตมาจาก Firebase)
+let sharedAudioCtx = null;
+
+function getAudioCtx(){
+  if(!sharedAudioCtx){
+    sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return sharedAudioCtx;
+}
+
+function unlockAudio(){
+  const ctx = getAudioCtx();
+  if(ctx.state === 'suspended'){
+    ctx.resume();
+  }
+}
+document.addEventListener('touchstart', unlockAudio, { once:true });
+document.addEventListener('click', unlockAudio, { once:true });
+
 function playReadySound(){
   try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = getAudioCtx();
+    if(ctx.state === 'suspended'){
+      ctx.resume();
+    }
     const now = ctx.currentTime;
     const notes = [880, 1175]; // โน้ตคู่ ฟังดูสดใส คล้ายเสียง "ติ๊ง"
     notes.forEach((freq, i) => {
@@ -1523,6 +1562,11 @@ function escapeHtml(str){
   d.textContent = str || '';
   return d.innerHTML;
 }
+
+document.getElementById('btnTestSound').addEventListener('click', () => {
+  unlockAudio();
+  playReadySound();
+});
 
 // Event Listeners สำหรับการทำงานต่างๆ ของหน้าเว็บ
 document.getElementById('btnAdd').addEventListener('click', () => {
