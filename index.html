@@ -202,6 +202,24 @@
   .card.status-ready{border-color:var(--ready);}
   .card.status-preop{border-color:var(--preop);}
   .card.status-delivering{border-color:var(--transit);}
+
+  .order-badge{
+    position:absolute;
+    top:-9px;
+    left:-9px;
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--muted);
+    font-size:11px;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+  }
   .card.status-warn{border-color:var(--waiting);}
   .card.status-urgent{border-color:var(--danger);animation:urgentPulse 1.4s infinite;}
   .card.status-fasttrack{
@@ -1008,19 +1026,20 @@ function render(){
 
   const now = Date.now();
 
-  preop.forEach(c => boardPreop.appendChild(buildPreopCard(c, now)));
-  waiting.forEach(c => boardWaiting.appendChild(buildCard(c, now)));
-  ready.forEach(c => boardReady.appendChild(buildCard(c, now)));
-  delivering.forEach(c => boardDelivering.appendChild(buildDeliveringCard(c, now)));
+  preop.forEach((c,i) => boardPreop.appendChild(buildPreopCard(c, now, i+1)));
+  waiting.forEach((c,i) => boardWaiting.appendChild(buildCard(c, now, i+1)));
+  ready.forEach((c,i) => boardReady.appendChild(buildCard(c, now, i+1)));
+  delivering.forEach((c,i) => boardDelivering.appendChild(buildDeliveringCard(c, now, i+1)));
 
   renderHistory();
 }
 
-function buildPreopCard(c, now){
+function buildPreopCard(c, now, order){
   const waitMs = now - c.createdAt;
   const card = document.createElement('div');
   card.className = 'card status-preop';
   card.innerHTML = `
+    <div class="order-badge mono">${order}</div>
     <div class="card-top">
       <div>
         <div class="ward-label">วอร์ดต้นทาง</div>
@@ -1042,7 +1061,7 @@ function buildPreopCard(c, now){
   return card;
 }
 
-function buildCard(c, now){
+function buildCard(c, now, order){
   const isReady = c.status === 'ready';
   const isWaiting = c.status === 'waiting';
   const isFT = !!c.isFastTrack;
@@ -1103,6 +1122,7 @@ function buildCard(c, now){
   const xrayTagHtml = `<span class="tag ${xrayClass}">${xrayText}</span>`;
 
   card.innerHTML = `
+    <div class="order-badge mono">${order}</div>
     <div class="card-top">
       <div>
         <div class="ward-label">วอร์ดปลายทาง</div>
@@ -1131,7 +1151,7 @@ function buildCard(c, now){
   return card;
 }
 
-function buildDeliveringCard(c, now){
+function buildDeliveringCard(c, now, order){
   let respDisplay = '';
   if (c.respiration && c.respiration !== 'Room air') {
     respDisplay = c.respiration;
@@ -1146,6 +1166,7 @@ function buildDeliveringCard(c, now){
   const card = document.createElement('div');
   card.className = 'card status-delivering';
   card.innerHTML = `
+    <div class="order-badge mono">${order}</div>
     <div class="card-top">
       <div>
         <div class="ward-label">วอร์ดปลายทาง</div>
