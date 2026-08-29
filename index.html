@@ -878,8 +878,12 @@
       <input type="text" id="preopWardInput" list="wardOptionsList" placeholder="พิมพ์ชื่อวอร์ดหรือเลือกจากรายการ..." autocomplete="off">
     </div>
     <div class="field">
-      <label>ผู้ที่ไปรับ (พิมพ์หรือเลือกชื่อ)</label>
-      <input type="text" id="preopReceiverInput" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+      <label>ผู้ที่ไปรับ คนที่ 1 (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="preopReceiverInput1" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>ผู้ที่ไปรับ คนที่ 2 (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="preopReceiverInput2" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
     </div>
     <div class="field">
       <label>OR Room</label>
@@ -1664,7 +1668,8 @@ document.getElementById('btnAdd').addEventListener('click', () => {
 document.getElementById('btnAddPreop').addEventListener('click', () => {
   document.getElementById('preopWardInput').value = '';
   document.getElementById('preopNotes').value = '';
-  document.getElementById('preopReceiverInput').value = '';
+  document.getElementById('preopReceiverInput1').value = '';
+  document.getElementById('preopReceiverInput2').value = '';
   document.getElementById('preopOrRoom').value = '';
   document.getElementById('chkPreopBlock').checked = false;
   document.getElementById('lblPreopBlock').classList.remove('active');
@@ -1688,7 +1693,22 @@ document.getElementById('btnPreopSave').addEventListener('click', () => {
   const ward = document.getElementById('preopWardInput').value.trim();
   if(!ward){ alert('กรุณาระบุวอร์ดต้นทาง'); return; }
   const notes = document.getElementById('preopNotes').value.trim();
-  const receivedBy = document.getElementById('preopReceiverInput').value.trim();
+
+  // รวมชื่อผู้ไปรับ 2 ช่อง แบบเดียวกับผู้ไปส่ง (รองรับ "ไม่มี" ถ้าไปคนเดียว) — ฟิลด์นี้ยังไม่บังคับกรอก
+  const r1 = document.getElementById('preopReceiverInput1').value.trim();
+  const r2 = document.getElementById('preopReceiverInput2').value.trim();
+  let receivedBy = '';
+  if(r1 && r2){
+    if(r1 === 'ไม่มี' && r2 === 'ไม่มี') receivedBy = '';
+    else if(r2 === 'ไม่มี') receivedBy = r1;
+    else if(r1 === 'ไม่มี') receivedBy = r2;
+    else receivedBy = `${r1} + ${r2}`;
+  } else if(r1){
+    receivedBy = r1;
+  } else if(r2){
+    receivedBy = r2;
+  }
+
   const orRoom = document.getElementById('preopOrRoom').value;
   const isBlock = chkPreopBlock.checked;
   const now = Date.now();
