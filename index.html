@@ -31,6 +31,8 @@
     --resp-dim:#1B3454;
     --preop:#2EC4B6;
     --preop-dim:#173B37;
+    --transit:#9B6BFF;
+    --transit-dim:#2C2149;
   }
   *{box-sizing:border-box;}
   body{
@@ -102,7 +104,7 @@
 
   .columns{
     display:grid;
-    grid-template-columns:1fr 1fr 1fr;
+    grid-template-columns:repeat(4, 1fr);
     gap:20px;
     align-items:start;
   }
@@ -118,6 +120,7 @@
   .col-dot.preop{background:var(--preop);box-shadow:0 0 8px var(--preop);}
   .col-dot.waiting{background:var(--waiting);box-shadow:0 0 8px var(--waiting);}
   .col-dot.ready{background:var(--ready);box-shadow:0 0 8px var(--ready);}
+  .col-dot.transit{background:var(--transit);box-shadow:0 0 8px var(--transit);}
   .col-count{
     margin-left:auto;
     font-size:12px;
@@ -140,7 +143,10 @@
     white-space:nowrap;
   }
   .add-btn-small:hover{filter:brightness(1.08);}
-  @media(max-width:960px){
+  @media(max-width:1200px){
+    .columns{grid-template-columns:1fr 1fr;}
+  }
+  @media(max-width:640px){
     .columns{grid-template-columns:1fr;}
   }
 
@@ -172,6 +178,7 @@
   .card.status-waiting{border-color:var(--waiting);}
   .card.status-ready{border-color:var(--ready);}
   .card.status-preop{border-color:var(--preop);}
+  .card.status-delivering{border-color:var(--transit);}
   .card.status-warn{border-color:var(--waiting);}
   .card.status-urgent{border-color:var(--danger);animation:urgentPulse 1.4s infinite;}
   .card.status-fasttrack{
@@ -220,6 +227,7 @@
   .badge.ready{background:var(--ready-dim);color:var(--ready);}
   .badge.urgent{background:var(--danger-dim);color:var(--danger);}
   .badge.fasttrack{background:var(--danger);color:#FFFFFF;}
+  .badge.delivering{background:var(--transit-dim);color:var(--transit);}
 
   .tags{display:flex;gap:6px;flex-wrap:wrap;}
   .tag{
@@ -496,6 +504,15 @@
       </div>
       <div class="board" id="boardReady"></div>
     </section>
+
+    <section class="column">
+      <div class="column-head">
+        <span class="col-dot transit"></span>
+        <h2>ส่งผู้ป่วยได้</h2>
+        <span class="col-count" id="countDelivering">0</span>
+      </div>
+      <div class="board" id="boardDelivering"></div>
+    </section>
   </div>
 
   <button class="history-toggle" id="btnHistory">ดูประวัติที่รับส่งแล้ว ▾</button>
@@ -726,6 +743,24 @@
   </div>
 </div>
 
+<!-- Modal เลือกผู้ไปส่งผู้ป่วย (ก่อนย้ายไปแท็บ "ส่งผู้ป่วยได้") -->
+<div class="overlay" id="deliverOverlay">
+  <div class="modal">
+    <h2>เลือกผู้ไปส่งผู้ป่วย</h2>
+    <div class="field">
+      <label>ผู้ไปส่ง (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="delivererInput" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+      <datalist id="delivererOptionsList">
+        <!-- รอรายชื่อผู้ไปส่งจากผู้ใช้ ค่อยเพิ่ม <option value="ชื่อ"></option> ตรงนี้ทีหลัง -->
+      </datalist>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn danger-outline" id="btnDelivererCancel" style="flex:1;">ยกเลิก</button>
+      <button class="action-btn primary" id="btnDelivererConfirm" style="flex:1;">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyBgz68uDcAU7wwiI6Jid3aIwGEszAvjxZs",
@@ -747,6 +782,7 @@ let pendingWard = '';
 let pendingXray = null;
 let pendingNotes = '';
 let pendingTimeInRR = '';
+let pendingDeliverCaseId = null;
 
 // เกณฑ์เวลารอ: 30 นาที = เตือน (เหลือง) / 1 ชม. = เตือนมาก (แดง)
 const WARN_MS = 30 * 60 * 1000;
@@ -874,10 +910,12 @@ setInterval(() => {
     if(!c) return;
     const now = Date.now();
     let waitMs = 0;
+    let label = 'รอมาแล้ว ';
     if(c.status === 'ready') waitMs = now - c.readyAt;
     else if(c.status === 'waiting') waitMs = now - (c.waitingAt || c.createdAt);
     else if(c.status === 'preop') waitMs = now - c.createdAt;
-    el.textContent = 'รอมาแล้ว ' + elapsed(waitMs);
+    else if(c.status === 'delivering'){ waitMs = now - (c.deliveringAt || c.readyAt || c.createdAt); label = 'นำส่งมาแล้ว '; }
+    el.textContent = label + elapsed(waitMs);
   });
 }, 1000);
 
@@ -885,6 +923,7 @@ function render(){
   const boardPreop = document.getElementById('boardPreop');
   const boardWaiting = document.getElementById('boardWaiting');
   const boardReady = document.getElementById('boardReady');
+  const boardDelivering = document.getElementById('boardDelivering');
 
   const preop = cases.filter(c => c.status === 'preop')
     .sort((a,b) => a.createdAt - b.createdAt);
@@ -899,9 +938,13 @@ function render(){
       return timeInRRMinutes(a) - timeInRRMinutes(b);
     });
 
+  const delivering = cases.filter(c => c.status === 'delivering')
+    .sort((a,b) => (a.deliveringAt || 0) - (b.deliveringAt || 0));
+
   document.getElementById('countPreop').textContent = preop.length;
   document.getElementById('countWaiting').textContent = waiting.length;
   document.getElementById('countReady').textContent = ready.length;
+  document.getElementById('countDelivering').textContent = delivering.length;
 
   boardPreop.innerHTML = preop.length === 0
     ? '<div class="empty">ไม่มีผู้ป่วยในคิว Pre-op</div>' : '';
@@ -909,12 +952,15 @@ function render(){
     ? '<div class="empty">ไม่มีผู้ป่วยใน Waiting Area</div>' : '';
   boardReady.innerHTML = ready.length === 0
     ? '<div class="empty">ยังไม่มีผู้ป่วยพร้อมส่ง</div>' : '';
+  boardDelivering.innerHTML = delivering.length === 0
+    ? '<div class="empty">ยังไม่มีผู้ป่วยกำลังนำส่ง</div>' : '';
 
   const now = Date.now();
 
   preop.forEach(c => boardPreop.appendChild(buildPreopCard(c, now)));
   waiting.forEach(c => boardWaiting.appendChild(buildCard(c, now)));
   ready.forEach(c => boardReady.appendChild(buildCard(c, now)));
+  delivering.forEach(c => boardDelivering.appendChild(buildDeliveringCard(c, now)));
 
   renderHistory();
 }
@@ -1034,6 +1080,48 @@ function buildCard(c, now){
   return card;
 }
 
+function buildDeliveringCard(c, now){
+  const waitMs = now - (c.deliveringAt || c.readyAt || c.createdAt);
+
+  let respDisplay = '';
+  if (c.respiration && c.respiration !== 'Room air') {
+    respDisplay = c.respiration;
+    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece'].includes(c.respiration)) {
+      respDisplay += ` (${c.o2Lpm} LPM)`;
+    }
+  }
+
+  const xrayClass = c.xray === 'yes' ? 'xray-yes' : 'xray-no';
+  const xrayText = c.xray === 'yes' ? 'X-ray' : 'ไม่ X-ray';
+
+  const card = document.createElement('div');
+  card.className = 'card status-delivering';
+  card.innerHTML = `
+    <div class="card-top">
+      <div>
+        <div class="ward-label">วอร์ดปลายทาง</div>
+        <div class="ward-name">${escapeHtml(c.ward)}</div>
+        <div class="date-line mono">${fmtDate(c.date)}</div>
+      </div>
+      <div class="card-right-info">
+        <div class="badge delivering">🚑 กำลังนำส่ง</div>
+        <div class="created-time-tag">👤 ${escapeHtml(c.deliveredBy || '-')}</div>
+      </div>
+    </div>
+    <div class="tags">
+      <span class="tag ${xrayClass}">${xrayText}</span>
+      ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
+      ${c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''}
+    </div>
+    ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
+    <div class="timer mono" data-case-id="${c.id}">นำส่งมาแล้ว ${elapsed(waitMs)}</div>
+    <div class="actions">
+      <button class="action-btn primary" data-action="delivered" data-id="${c.id}">ถึงวอร์ดแล้ว</button>
+    </div>
+  `;
+  return card;
+}
+
 function renderHistory(){
   const hist = cases.filter(c => c.status === 'picked' || c.status === 'preop-picked')
     .sort((a,b) => b.pickedAt - a.pickedAt)
@@ -1054,7 +1142,7 @@ function renderHistory(){
     }
     const condInfo = [respDisplay, c.isInfection ? 'CRE/VRE' : ''].filter(Boolean).join(', ');
     return `<div class="history-row">
-      <span>${fmtDate(c.date)} (${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}) · ${escapeHtml(c.ward)} ${c.isPreOp ? '🔄[Pre-op]' : ''} ${c.isFastTrack ? '⚡[FastTrack]' : ''} ${condInfo ? `[${condInfo}]` : ''}</span>
+      <span>${fmtDate(c.date)} (${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}) · ${escapeHtml(c.ward)} ${c.isPreOp ? '🔄[Pre-op]' : ''} ${c.isFastTrack ? '⚡[FastTrack]' : ''} ${condInfo ? `[${condInfo}]` : ''} ${c.deliveredBy ? `👤[ผู้ส่ง: ${escapeHtml(c.deliveredBy)}]` : ''}</span>
       <span>ใช้เวลารอ ${elapsed(duration)}</span>
     </div>`;
   }).join('');
@@ -1159,10 +1247,40 @@ document.querySelector('.columns').addEventListener('click', (e) => {
       casesRef.child(id).remove();
     }
   } else if(action === 'picked'){
-    casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
+    const c = cases.find(x => x.id === id);
+    if(c && c.status === 'ready'){
+      // จากคอลัมน์ "พร้อมส่งกลับวอร์ด" ให้เลือกผู้ไปส่งก่อน แล้วค่อยย้ายไปคอลัมน์ "ส่งผู้ป่วยได้"
+      pendingDeliverCaseId = id;
+      document.getElementById('delivererInput').value = '';
+      document.getElementById('deliverOverlay').classList.add('open');
+    } else {
+      casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
+    }
   } else if(action === 'preop-picked'){
     casesRef.child(id).update({ status: 'preop-picked', pickedAt: Date.now() });
+  } else if(action === 'delivered'){
+    casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
   }
+});
+
+// Modal เลือกผู้ไปส่งผู้ป่วย (หลังกดรับผู้ป่วยจากคอลัมน์ "พร้อมส่งกลับวอร์ด")
+document.getElementById('btnDelivererCancel').addEventListener('click', () => {
+  document.getElementById('deliverOverlay').classList.remove('open');
+  pendingDeliverCaseId = null;
+});
+
+document.getElementById('btnDelivererConfirm').addEventListener('click', () => {
+  const deliverer = document.getElementById('delivererInput').value.trim();
+  if(!deliverer){ alert('กรุณาระบุชื่อผู้ไปส่ง'); return; }
+  if(pendingDeliverCaseId){
+    casesRef.child(pendingDeliverCaseId).update({
+      status: 'delivering',
+      deliveredBy: deliverer,
+      deliveringAt: Date.now()
+    });
+  }
+  document.getElementById('deliverOverlay').classList.remove('open');
+  pendingDeliverCaseId = null;
 });
 
 // Condition Modal Logic
