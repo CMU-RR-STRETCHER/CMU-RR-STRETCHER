@@ -590,6 +590,10 @@
       </datalist>
     </div>
     <div class="field">
+      <label>Time in RR (เวลาที่เข้าห้องพักฟื้น)</label>
+      <input type="time" id="inTimeInRR">
+    </div>
+    <div class="field">
       <label>X-ray</label>
       <div class="xray-toggle">
         <div class="xray-opt" id="optXrayYes" data-val="yes">X-ray</div>
@@ -714,6 +718,7 @@ let selectedInfection = false;
 let pendingWard = '';
 let pendingXray = null;
 let pendingNotes = '';
+let pendingTimeInRR = '';
 
 const URGENT_MS = 10 * 60 * 1000;
 
@@ -744,13 +749,12 @@ function fmtTimeOnly(timestamp){
   return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
 }
 
-function getShiftName(timestamp){
-  if(!timestamp) return '';
-  const d = new Date(timestamp);
-  const hours = d.getHours();
-  const minutes = d.getMinutes();
-  const totalMinutes = hours * 60 + minutes;
+function nowHHMM(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
 
+function shiftNameForMinutes(totalMinutes){
   if (totalMinutes >= 480 && totalMinutes <= 960) {
     return '☀️ เวรเช้า';
   } else if (totalMinutes > 960 && totalMinutes <= 1439) {
@@ -758,6 +762,21 @@ function getShiftName(timestamp){
   } else {
     return '🌙 เวรดึก';
   }
+}
+
+function getShiftName(timestamp){
+  if(!timestamp) return '';
+  const d = new Date(timestamp);
+  return shiftNameForMinutes(d.getHours() * 60 + d.getMinutes());
+}
+
+// สำหรับ Waiting/Ready: ถ้ามีการกรอก Time in RR ไว้ ให้แสดงเวลานั้นแทนเวลาที่กดเพิ่มเข้าระบบ
+function cardTimeLabel(c){
+  if(c.timeInRR){
+    const [hh, mm] = c.timeInRR.split(':').map(Number);
+    return `${shiftNameForMinutes(hh * 60 + mm)} | ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')} น.`;
+  }
+  return `${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}`;
 }
 
 function fmtDate(dateStr){
@@ -917,7 +936,7 @@ function buildCard(c, now){
       </div>
       <div class="card-right-info">
         <div class="badge ${badgeClass}">${badgeText}</div>
-        <div class="created-time-tag">${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}</div>
+        <div class="created-time-tag">${cardTimeLabel(c)}</div>
       </div>
     </div>
     <div class="tags">
@@ -973,6 +992,7 @@ function escapeHtml(str){
 document.getElementById('btnAdd').addEventListener('click', () => {
   document.getElementById('wardInput').value = '';
   document.getElementById('inNotes').value = '';
+  document.getElementById('inTimeInRR').value = nowHHMM();
   xraySelection = null;
   document.getElementById('optXrayYes').className = 'xray-opt';
   document.getElementById('optXrayNo').className = 'xray-opt';
@@ -1033,6 +1053,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
   pendingWard = ward;
   pendingXray = xraySelection;
   pendingNotes = notes;
+  pendingTimeInRR = document.getElementById('inTimeInRR').value;
 
   document.getElementById('overlay').classList.remove('open');
 
@@ -1113,6 +1134,7 @@ function pushNewCase(extra){
     ward: pendingWard,
     xray: pendingXray,
     notes: pendingNotes,
+    timeInRR: pendingTimeInRR,
     createdAt: now,
     date: dateStr,
     respiration: selectedRespiration,
@@ -1121,7 +1143,7 @@ function pushNewCase(extra){
     ...extra
   });
 
-  pendingWard = ''; pendingXray = null; pendingNotes = '';
+  pendingWard = ''; pendingXray = null; pendingNotes = ''; pendingTimeInRR = '';
   document.getElementById('choiceOverlay').classList.remove('open');
 }
 
