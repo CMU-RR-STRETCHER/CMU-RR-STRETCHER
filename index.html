@@ -786,7 +786,7 @@ function populateTimeSelectors(){
   for(let h=0; h<24; h++){
     const opt = document.createElement('option');
     opt.value = String(h).padStart(2,'0');
-    opt.textContent = String(h).padStart(2,'0') + ' น.';
+    opt.textContent = String(h).padStart(2,'0');
     hourSel.appendChild(opt);
   }
   for(let m=0; m<60; m++){
