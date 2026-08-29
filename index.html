@@ -100,7 +100,7 @@
 
   .columns{
     display:grid;
-    grid-template-columns:1fr 1fr 1fr;
+    grid-template-columns:1fr 1fr;
     gap:20px;
     align-items:start;
   }
@@ -430,15 +430,6 @@
   <div class="columns">
     <section class="column">
       <div class="column-head">
-        <span class="col-dot prep"></span>
-        <h2>กำลังพักฟื้น</h2>
-        <span class="col-count" id="countPrep">0</span>
-      </div>
-      <div class="board" id="boardPrep"></div>
-    </section>
-
-    <section class="column">
-      <div class="column-head">
         <span class="col-dot waiting"></span>
         <h2>Waiting area (จุดรอส่ง)</h2>
         <span class="col-count" id="countWaiting">0</span>
@@ -583,7 +574,7 @@
     </div>
     <div class="modal-actions">
       <button class="action-btn danger-outline" id="btnCancel" style="flex:1;">ยกเลิก</button>
-      <button class="action-btn primary" id="btnSave" style="flex:1;">เพิ่มเข้าคิว</button>
+      <button class="action-btn primary" id="btnSave" style="flex:1;">ถัดไป ➔</button>
     </div>
   </div>
 </div>
@@ -671,9 +662,11 @@ const casesRef = firebase.database().ref('cases');
 
 let cases = [];
 let xraySelection = null;
-let selectedCaseIdForChoice = null;
 let selectedRespiration = 'Room air';
 let selectedInfection = false;
+let pendingWard = '';
+let pendingXray = null;
+let pendingNotes = '';
 
 const URGENT_MS = 10 * 60 * 1000;
 
@@ -749,13 +742,9 @@ setInterval(() => {
 }, 1000);
 
 function render(){
-  const boardPrep = document.getElementById('boardPrep');
   const boardWaiting = document.getElementById('boardWaiting');
   const boardReady = document.getElementById('boardReady');
 
-  const prepping = cases.filter(c => c.status === 'preparing')
-    .sort((a,b) => a.createdAt - b.createdAt);
-  
   const waiting = cases.filter(c => c.status === 'waiting')
     .sort((a,b) => (a.waitingAt || a.createdAt) - (b.waitingAt || b.createdAt));
   
@@ -766,12 +755,9 @@ function render(){
       return (a.readyAt || 0) - (b.readyAt || 0);
     });
 
-  document.getElementById('countPrep').textContent = prepping.length;
   document.getElementById('countWaiting').textContent = waiting.length;
   document.getElementById('countReady').textContent = ready.length;
 
-  boardPrep.innerHTML = prepping.length === 0
-    ? '<div class="empty">ไม่มีผู้ป่วยกำลังพักฟื้น</div>' : '';
   boardWaiting.innerHTML = waiting.length === 0
     ? '<div class="empty">ไม่มีผู้ป่วยใน Waiting Area</div>' : '';
   boardReady.innerHTML = ready.length === 0
@@ -779,7 +765,6 @@ function render(){
 
   const now = Date.now();
 
-  prepping.forEach(c => boardPrep.appendChild(buildCard(c, now)));
   waiting.forEach(c => boardWaiting.appendChild(buildCard(c, now)));
   ready.forEach(c => boardReady.appendChild(buildCard(c, now)));
 
@@ -789,7 +774,6 @@ function render(){
 function buildCard(c, now){
   const isReady = c.status === 'ready';
   const isWaiting = c.status === 'waiting';
-  const isPrep = c.status === 'preparing';
   const isFT = !!c.isFastTrack;
 
   const waitMs = isReady ? now - c.readyAt : (isWaiting ? now - (c.waitingAt || c.createdAt) : 0);
@@ -803,8 +787,8 @@ function buildCard(c, now){
 
   card.className = 'card status-' + cardStatusClass;
 
-  let badgeClass = 'prep';
-  let badgeText = 'กำลังพักฟื้น';
+  let badgeClass = 'waiting';
+  let badgeText = 'Waiting Area';
 
   if(isFT && isReady){
     badgeClass = 'fasttrack'; badgeText = '⚡ Fast Track';
@@ -817,13 +801,7 @@ function buildCard(c, now){
   }
 
   let actionsHtml = '';
-  if(isPrep){
-    actionsHtml = `
-      <div class="actions">
-        <button class="action-btn primary" data-action="open-condition" data-id="${c.id}">พร้อมส่ง</button>
-        <button class="action-btn danger-outline" data-action="remove" data-id="${c.id}">ลบ</button>
-      </div>`;
-  } else if(isWaiting){
+  if(isWaiting){
     actionsHtml = `
       <div class="actions">
         <button class="action-btn picked" data-action="picked" data-id="${c.id}">รับผู้ป่วยแล้ว</button>
@@ -846,9 +824,7 @@ function buildCard(c, now){
 
   const xrayClass = c.xray === 'yes' ? 'xray-yes' : 'xray-no';
   const xrayText = c.xray === 'yes' ? 'X-ray' : 'ไม่ X-ray';
-  const xrayTagHtml = isPrep
-    ? `<span class="tag ${xrayClass} clickable" data-action="toggle-xray" data-id="${c.id}">${xrayText} ✏️</span>`
-    : `<span class="tag ${xrayClass}">${xrayText}</span>`;
+  const xrayTagHtml = `<span class="tag ${xrayClass}">${xrayText}</span>`;
 
   card.innerHTML = `
     <div class="card-top">
@@ -870,7 +846,6 @@ function buildCard(c, now){
     ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
     <div class="timeline">
       <div class="tl-step done"></div>
-      <div class="tl-step ${isPrep ? 'current' : 'done'}"></div>
       <div class="tl-step ${isWaiting ? 'current-waiting' : (isReady ? 'done' : '')}"></div>
       <div class="tl-step ${isReady ? (isFT ? 'current-fasttrack' : 'current') : ''}"></div>
     </div>
@@ -943,21 +918,23 @@ document.getElementById('btnSave').addEventListener('click', () => {
   if(!ward){ alert('กรุณาระบุวอร์ดปลายทาง'); return; }
   if(!xraySelection){ alert('กรุณาเลือกสถานะ X-ray'); return; }
   const notes = document.getElementById('inNotes').value.trim();
-  const now = Date.now();
-  const d = new Date(now);
-  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 
-  casesRef.push({
-    ward, xray: xraySelection, notes,
-    status: 'preparing',
-    createdAt: now,
-    date: dateStr,
-    respiration: 'Room air',
-    o2Lpm: 3,
-    isInfection: false
-  });
+  pendingWard = ward;
+  pendingXray = xraySelection;
+  pendingNotes = notes;
 
   document.getElementById('overlay').classList.remove('open');
+
+  // ไปต่อที่ขั้น Condition ผู้ป่วย
+  selectedRespiration = 'Room air';
+  selectedInfection = false;
+  document.getElementById('chkInfection').checked = false;
+  document.getElementById('lblInfection').classList.remove('active');
+  document.querySelectorAll('.resp-opt').forEach(opt => {
+    opt.classList.toggle('active', opt.dataset.val === 'Room air');
+  });
+  document.getElementById('o2FlowBox').style.display = 'none';
+  document.getElementById('conditionOverlay').classList.add('open');
 });
 
 // จัดการคลิกปุ่มต่างๆ ในบอร์ด
@@ -971,27 +948,8 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     if(confirm('ต้องการลบรายการนี้ใช่หรือไม่?')){
       casesRef.child(id).remove();
     }
-  } else if(action === 'open-condition'){
-    selectedCaseIdForChoice = id;
-    selectedRespiration = 'Room air';
-    selectedInfection = false;
-    document.getElementById('chkInfection').checked = false;
-    document.getElementById('lblInfection').classList.remove('active');
-    document.querySelectorAll('.resp-opt').forEach(opt => {
-      opt.classList.toggle('active', opt.dataset.val === 'Room air');
-    });
-    document.getElementById('o2FlowBox').style.display = 'none';
-    document.getElementById('conditionOverlay').classList.add('open');
-  } else if(action === 'to-ready'){
-    casesRef.child(id).update({ status: 'ready', readyAt: Date.now() });
   } else if(action === 'picked'){
     casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
-  } else if(action === 'toggle-xray'){
-    const c = cases.find(x => x.id === id);
-    if(c){
-      const newXray = c.xray === 'yes' ? 'no' : 'yes';
-      casesRef.child(id).update({ xray: newXray });
-    }
   }
 });
 
@@ -1029,47 +987,41 @@ document.getElementById('btnChoiceCancel').addEventListener('click', () => {
   document.getElementById('choiceOverlay').classList.remove('open');
 });
 
-// เลือกสถานะปลายทางหลังจากกรอก Condition
+// เลือกสถานะปลายทางหลังจากกรอก Condition แล้วสร้างเคสใหม่เข้า Firebase
 const o2LpmSelect = document.getElementById('selO2Lpm');
-document.getElementById('btnGoFastTrack').addEventListener('click', () => {
-  if(!selectedCaseIdForChoice) return;
+
+function pushNewCase(extra){
+  if(!pendingWard) return;
   const now = Date.now();
-  casesRef.child(selectedCaseIdForChoice).update({
-    status: 'ready',
-    readyAt: now,
-    isFastTrack: true,
+  const d = new Date(now);
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+  casesRef.push({
+    ward: pendingWard,
+    xray: pendingXray,
+    notes: pendingNotes,
+    createdAt: now,
+    date: dateStr,
     respiration: selectedRespiration,
     o2Lpm: parseInt(o2LpmSelect.value),
-    isInfection: selectedInfection
+    isInfection: selectedInfection,
+    ...extra
   });
+
+  pendingWard = ''; pendingXray = null; pendingNotes = '';
   document.getElementById('choiceOverlay').classList.remove('open');
+}
+
+document.getElementById('btnGoFastTrack').addEventListener('click', () => {
+  pushNewCase({ status: 'ready', readyAt: Date.now(), isFastTrack: true });
 });
 
 document.getElementById('btnGoWaiting').addEventListener('click', () => {
-  if(!selectedCaseIdForChoice) return;
-  const now = Date.now();
-  casesRef.child(selectedCaseIdForChoice).update({
-    status: 'waiting',
-    waitingAt: now,
-    respiration: selectedRespiration,
-    o2Lpm: parseInt(o2LpmSelect.value),
-    isInfection: selectedInfection
-  });
-  document.getElementById('choiceOverlay').classList.remove('open');
+  pushNewCase({ status: 'waiting', waitingAt: Date.now() });
 });
 
 document.getElementById('btnGoReady').addEventListener('click', () => {
-  if(!selectedCaseIdForChoice) return;
-  const now = Date.now();
-  casesRef.child(selectedCaseIdForChoice).update({
-    status: 'ready',
-    readyAt: now,
-    isFastTrack: false,
-    respiration: selectedRespiration,
-    o2Lpm: parseInt(o2LpmSelect.value),
-    isInfection: selectedInfection
-  });
-  document.getElementById('choiceOverlay').classList.remove('open');
+  pushNewCase({ status: 'ready', readyAt: Date.now(), isFastTrack: false });
 });
 
 // Toggle History
