@@ -172,6 +172,7 @@
   .card.status-waiting{border-color:var(--waiting);}
   .card.status-ready{border-color:var(--ready);}
   .card.status-preop{border-color:var(--preop);}
+  .card.status-warn{border-color:var(--waiting);}
   .card.status-urgent{border-color:var(--danger);animation:urgentPulse 1.4s infinite;}
   .card.status-fasttrack{
     border-color:var(--danger);
@@ -242,6 +243,7 @@
   .tl-step.current-fasttrack{background:var(--danger);}
 
   .timer{font-size:12px;color:var(--muted);}
+  .timer.caution{color:var(--waiting);font-weight:700;}
   .timer.warn{color:var(--danger);font-weight:700;}
 
   .actions{display:flex;gap:8px;margin-top:2px;}
@@ -746,7 +748,9 @@ let pendingXray = null;
 let pendingNotes = '';
 let pendingTimeInRR = '';
 
-const URGENT_MS = 10 * 60 * 1000;
+// เกณฑ์เวลารอ: 30 นาที = เตือน (เหลือง) / 1 ชม. = เตือนมาก (แดง)
+const WARN_MS = 30 * 60 * 1000;
+const URGENT_MS = 60 * 60 * 1000;
 
 const thaiDays = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
 const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -947,13 +951,16 @@ function buildCard(c, now){
   const isFT = !!c.isFastTrack;
 
   const waitMs = isReady ? now - c.readyAt : (isWaiting ? now - (c.waitingAt || c.createdAt) : 0);
-  const isUrgent = isReady && !isFT && waitMs > URGENT_MS;
+  // สถานะรอนาน: >= 30 นาที = เหลือง (caution), >= 1 ชม. = แดง (urgent) — ใช้เฉพาะการ์ดในคอลัมน์ "พร้อมส่งกลับวอร์ด" และไม่ใช่ Fast Track
+  const isUrgent = isReady && !isFT && waitMs >= URGENT_MS;
+  const isCaution = isReady && !isFT && !isUrgent && waitMs >= WARN_MS;
 
   const card = document.createElement('div');
   
   let cardStatusClass = c.status;
   if (isFT && isReady) cardStatusClass = 'fasttrack';
   else if (isUrgent) cardStatusClass = 'urgent';
+  else if (isCaution) cardStatusClass = 'warn';
 
   card.className = 'card status-' + cardStatusClass;
 
@@ -963,7 +970,9 @@ function buildCard(c, now){
   if(isFT && isReady){
     badgeClass = 'fasttrack'; badgeText = '⚡ Fast Track';
   } else if(isUrgent){
-    badgeClass = 'urgent'; badgeText = '⚠ รอนาน';
+    badgeClass = 'urgent'; badgeText = '⚠ รอนานมาก';
+  } else if(isCaution){
+    badgeClass = 'waiting'; badgeText = '⚠ รอนาน';
   } else if(isReady){
     badgeClass = 'ready'; badgeText = 'พร้อมส่งกลับ';
   } else if(isWaiting){
@@ -1019,7 +1028,7 @@ function buildCard(c, now){
       <div class="tl-step ${isWaiting ? 'current-waiting' : (isReady ? 'done' : '')}"></div>
       <div class="tl-step ${isReady ? (isFT ? 'current-fasttrack' : 'current') : ''}"></div>
     </div>
-    ${(isReady || isWaiting) ? `<div class="timer ${(isUrgent || isFT)?'warn':''} mono" data-case-id="${c.id}">รอมาแล้ว ${elapsed(waitMs)}</div>` : ''}
+    ${(isReady || isWaiting) ? `<div class="timer ${isUrgent ? 'warn' : (isCaution ? 'caution' : '')} mono" data-case-id="${c.id}">รอมาแล้ว ${elapsed(waitMs)}</div>` : ''}
     ${actionsHtml}
   `;
   return card;
