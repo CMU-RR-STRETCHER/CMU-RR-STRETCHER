@@ -29,6 +29,8 @@
     --infection-dim:#4A321A;
     --resp:#54A0FF;
     --resp-dim:#1B3454;
+    --preop:#2EC4B6;
+    --preop-dim:#173B37;
   }
   *{box-sizing:border-box;}
   body{
@@ -100,7 +102,7 @@
 
   .columns{
     display:grid;
-    grid-template-columns:1fr 1fr;
+    grid-template-columns:1fr 1fr 1fr;
     gap:20px;
     align-items:start;
   }
@@ -113,6 +115,7 @@
   .column-head h2{font-size:14px;margin:0;font-weight:700;letter-spacing:.2px;}
   .col-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
   .col-dot.prep{background:var(--prep);}
+  .col-dot.preop{background:var(--preop);box-shadow:0 0 8px var(--preop);}
   .col-dot.waiting{background:var(--waiting);box-shadow:0 0 8px var(--waiting);}
   .col-dot.ready{background:var(--ready);box-shadow:0 0 8px var(--ready);}
   .col-count{
@@ -124,6 +127,19 @@
     border-radius:100px;
     padding:2px 9px;
   }
+  .add-btn-small{
+    background:var(--preop);
+    color:#06251A;
+    border:none;
+    padding:6px 12px;
+    border-radius:8px;
+    font-family:inherit;
+    font-weight:700;
+    font-size:11px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .add-btn-small:hover{filter:brightness(1.08);}
   @media(max-width:960px){
     .columns{grid-template-columns:1fr;}
   }
@@ -155,6 +171,7 @@
   }
   .card.status-waiting{border-color:var(--waiting);}
   .card.status-ready{border-color:var(--ready);}
+  .card.status-preop{border-color:var(--preop);}
   .card.status-urgent{border-color:var(--danger);animation:urgentPulse 1.4s infinite;}
   .card.status-fasttrack{
     border-color:var(--danger);
@@ -197,6 +214,7 @@
     flex:0 0 auto;
   }
   .badge.prep{background:var(--prep-dim);color:var(--prep);}
+  .badge.preop{background:var(--preop-dim);color:var(--preop);}
   .badge.waiting{background:var(--waiting-dim);color:var(--waiting);}
   .badge.ready{background:var(--ready-dim);color:var(--ready);}
   .badge.urgent{background:var(--danger-dim);color:var(--danger);}
@@ -430,6 +448,16 @@
   <div class="columns">
     <section class="column">
       <div class="column-head">
+        <span class="col-dot preop"></span>
+        <h2>Pre-op (รอรับเข้าห้องผ่าตัด)</h2>
+        <button class="add-btn-small" id="btnAddPreop">+ เพิ่มผู้ป่วย</button>
+        <span class="col-count" id="countPreop">0</span>
+      </div>
+      <div class="board" id="boardPreop"></div>
+    </section>
+
+    <section class="column">
+      <div class="column-head">
         <span class="col-dot waiting"></span>
         <h2>Waiting area (จุดรอส่ง)</h2>
         <span class="col-count" id="countWaiting">0</span>
@@ -575,6 +603,25 @@
     <div class="modal-actions">
       <button class="action-btn danger-outline" id="btnCancel" style="flex:1;">ยกเลิก</button>
       <button class="action-btn primary" id="btnSave" style="flex:1;">ถัดไป ➔</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal เพิ่มผู้ป่วยคิว Pre-op -->
+<div class="overlay" id="preopOverlay">
+  <div class="modal">
+    <h2>เพิ่มผู้ป่วยคิว Pre-op</h2>
+    <div class="field">
+      <label>วอร์ดต้นทาง (พิมพ์หรือเลือกวอร์ด)</label>
+      <input type="text" id="preopWardInput" list="wardOptionsList" placeholder="พิมพ์ชื่อวอร์ดหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>หมายเหตุ (ไม่บังคับ)</label>
+      <textarea id="preopNotes" placeholder="เช่น เตียงนอน, อุปกรณ์พิเศษที่ต้องเตรียม"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn danger-outline" id="btnPreopCancel" style="flex:1;">ยกเลิก</button>
+      <button class="action-btn primary" id="btnPreopSave" style="flex:1;">เพิ่มเข้าคิว</button>
     </div>
   </div>
 </div>
@@ -734,16 +781,21 @@ setInterval(() => {
     const c = cases.find(x => x.id === el.dataset.caseId);
     if(!c) return;
     const now = Date.now();
-    const isReady = c.status === 'ready';
-    const isWaiting = c.status === 'waiting';
-    const waitMs = isReady ? now - c.readyAt : (isWaiting ? now - (c.waitingAt || c.createdAt) : 0);
+    let waitMs = 0;
+    if(c.status === 'ready') waitMs = now - c.readyAt;
+    else if(c.status === 'waiting') waitMs = now - (c.waitingAt || c.createdAt);
+    else if(c.status === 'preop') waitMs = now - c.createdAt;
     el.textContent = 'รอมาแล้ว ' + elapsed(waitMs);
   });
 }, 1000);
 
 function render(){
+  const boardPreop = document.getElementById('boardPreop');
   const boardWaiting = document.getElementById('boardWaiting');
   const boardReady = document.getElementById('boardReady');
+
+  const preop = cases.filter(c => c.status === 'preop')
+    .sort((a,b) => a.createdAt - b.createdAt);
 
   const waiting = cases.filter(c => c.status === 'waiting')
     .sort((a,b) => (a.waitingAt || a.createdAt) - (b.waitingAt || b.createdAt));
@@ -755,9 +807,12 @@ function render(){
       return (a.readyAt || 0) - (b.readyAt || 0);
     });
 
+  document.getElementById('countPreop').textContent = preop.length;
   document.getElementById('countWaiting').textContent = waiting.length;
   document.getElementById('countReady').textContent = ready.length;
 
+  boardPreop.innerHTML = preop.length === 0
+    ? '<div class="empty">ไม่มีผู้ป่วยในคิว Pre-op</div>' : '';
   boardWaiting.innerHTML = waiting.length === 0
     ? '<div class="empty">ไม่มีผู้ป่วยใน Waiting Area</div>' : '';
   boardReady.innerHTML = ready.length === 0
@@ -765,10 +820,37 @@ function render(){
 
   const now = Date.now();
 
+  preop.forEach(c => boardPreop.appendChild(buildPreopCard(c, now)));
   waiting.forEach(c => boardWaiting.appendChild(buildCard(c, now)));
   ready.forEach(c => boardReady.appendChild(buildCard(c, now)));
 
   renderHistory();
+}
+
+function buildPreopCard(c, now){
+  const waitMs = now - c.createdAt;
+  const card = document.createElement('div');
+  card.className = 'card status-preop';
+  card.innerHTML = `
+    <div class="card-top">
+      <div>
+        <div class="ward-label">วอร์ดต้นทาง</div>
+        <div class="ward-name">${escapeHtml(c.ward)}</div>
+        <div class="date-line mono">${fmtDate(c.date)}</div>
+      </div>
+      <div class="card-right-info">
+        <div class="badge preop">รอรับเข้า OR</div>
+        <div class="created-time-tag">${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}</div>
+      </div>
+    </div>
+    ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
+    <div class="timer mono" data-case-id="${c.id}">รอมาแล้ว ${elapsed(waitMs)}</div>
+    <div class="actions">
+      <button class="action-btn picked" data-action="preop-picked" data-id="${c.id}">รับผู้ป่วยแล้ว</button>
+      <button class="action-btn danger-outline" data-action="remove" data-id="${c.id}">ลบ</button>
+    </div>
+  `;
+  return card;
 }
 
 function buildCard(c, now){
@@ -856,7 +938,7 @@ function buildCard(c, now){
 }
 
 function renderHistory(){
-  const hist = cases.filter(c => c.status === 'picked')
+  const hist = cases.filter(c => c.status === 'picked' || c.status === 'preop-picked')
     .sort((a,b) => b.pickedAt - a.pickedAt)
     .slice(0, 15);
   const el = document.getElementById('history');
@@ -875,7 +957,7 @@ function renderHistory(){
     }
     const condInfo = [respDisplay, c.isInfection ? 'CRE/VRE' : ''].filter(Boolean).join(', ');
     return `<div class="history-row">
-      <span>${fmtDate(c.date)} (${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}) · ${escapeHtml(c.ward)} ${c.isFastTrack ? '⚡[FastTrack]' : ''} ${condInfo ? `[${condInfo}]` : ''}</span>
+      <span>${fmtDate(c.date)} (${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}) · ${escapeHtml(c.ward)} ${c.isPreOp ? '🔄[Pre-op]' : ''} ${c.isFastTrack ? '⚡[FastTrack]' : ''} ${condInfo ? `[${condInfo}]` : ''}</span>
       <span>ใช้เวลารอ ${elapsed(duration)}</span>
     </div>`;
   }).join('');
@@ -895,6 +977,35 @@ document.getElementById('btnAdd').addEventListener('click', () => {
   document.getElementById('optXrayYes').className = 'xray-opt';
   document.getElementById('optXrayNo').className = 'xray-opt';
   document.getElementById('overlay').classList.add('open');
+});
+
+document.getElementById('btnAddPreop').addEventListener('click', () => {
+  document.getElementById('preopWardInput').value = '';
+  document.getElementById('preopNotes').value = '';
+  document.getElementById('preopOverlay').classList.add('open');
+});
+
+document.getElementById('btnPreopCancel').addEventListener('click', () => {
+  document.getElementById('preopOverlay').classList.remove('open');
+});
+
+document.getElementById('btnPreopSave').addEventListener('click', () => {
+  const ward = document.getElementById('preopWardInput').value.trim();
+  if(!ward){ alert('กรุณาระบุวอร์ดต้นทาง'); return; }
+  const notes = document.getElementById('preopNotes').value.trim();
+  const now = Date.now();
+  const d = new Date(now);
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+  casesRef.push({
+    ward, notes,
+    status: 'preop',
+    createdAt: now,
+    date: dateStr,
+    isPreOp: true
+  });
+
+  document.getElementById('preopOverlay').classList.remove('open');
 });
 
 document.getElementById('btnCancel').addEventListener('click', () => {
@@ -950,6 +1061,8 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     }
   } else if(action === 'picked'){
     casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
+  } else if(action === 'preop-picked'){
+    casesRef.child(id).update({ status: 'preop-picked', pickedAt: Date.now() });
   }
 });
 
