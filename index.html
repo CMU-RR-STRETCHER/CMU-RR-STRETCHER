@@ -748,9 +748,14 @@
   <div class="modal">
     <h2>เลือกผู้ไปส่งผู้ป่วย</h2>
     <div class="field">
-      <label>ผู้ไปส่ง (พิมพ์หรือเลือกชื่อ)</label>
-      <input type="text" id="delivererInput" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+      <label>ผู้ไปส่ง คนที่ 1 (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="delivererInput1" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>ผู้ไปส่ง คนที่ 2 (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="delivererInput2" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
       <datalist id="delivererOptionsList">
+        <option value="ไม่มี"></option>
         <option value="วิรัชฎา"></option>
         <option value="ลำดวน"></option>
         <option value="รุ่งทิวา"></option>
@@ -1275,7 +1280,8 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     if(c && c.status === 'ready'){
       // จากคอลัมน์ "พร้อมส่งกลับวอร์ด" ให้เลือกผู้ไปส่งก่อน แล้วค่อยย้ายไปคอลัมน์ "ส่งผู้ป่วยได้"
       pendingDeliverCaseId = id;
-      document.getElementById('delivererInput').value = '';
+      document.getElementById('delivererInput1').value = '';
+      document.getElementById('delivererInput2').value = '';
       document.getElementById('deliverOverlay').classList.add('open');
     } else {
       casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
@@ -1294,12 +1300,22 @@ document.getElementById('btnDelivererCancel').addEventListener('click', () => {
 });
 
 document.getElementById('btnDelivererConfirm').addEventListener('click', () => {
-  const deliverer = document.getElementById('delivererInput').value.trim();
-  if(!deliverer){ alert('กรุณาระบุชื่อผู้ไปส่ง'); return; }
+  const deliverer1 = document.getElementById('delivererInput1').value.trim();
+  const deliverer2 = document.getElementById('delivererInput2').value.trim();
+  if(!deliverer1 || !deliverer2){ alert('กรุณาระบุผู้ไปส่งให้ครบทั้ง 2 ช่อง (เลือก "ไม่มี" ได้ถ้าไปคนเดียว)'); return; }
+  if(deliverer1 === 'ไม่มี' && deliverer2 === 'ไม่มี'){ alert('กรุณาระบุผู้ไปส่งอย่างน้อย 1 คน'); return; }
+
+  let combinedName;
+  if(deliverer2 === 'ไม่มี') combinedName = deliverer1;
+  else if(deliverer1 === 'ไม่มี') combinedName = deliverer2;
+  else combinedName = `${deliverer1} + ${deliverer2}`;
+
   if(pendingDeliverCaseId){
     casesRef.child(pendingDeliverCaseId).update({
       status: 'delivering',
-      deliveredBy: deliverer,
+      deliveredBy: combinedName,
+      deliveredBy1: deliverer1,
+      deliveredBy2: deliverer2,
       deliveringAt: Date.now()
     });
   }
