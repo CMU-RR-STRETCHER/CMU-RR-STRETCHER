@@ -943,7 +943,6 @@ setInterval(() => {
     if(c.status === 'ready') waitMs = now - c.readyAt;
     else if(c.status === 'waiting') waitMs = now - (c.waitingAt || c.createdAt);
     else if(c.status === 'preop') waitMs = now - c.createdAt;
-    else if(c.status === 'delivering'){ waitMs = now - (c.deliveringAt || c.readyAt || c.createdAt); label = 'นำส่งมาแล้ว '; }
     el.textContent = label + elapsed(waitMs);
   });
 }, 1000);
@@ -1064,7 +1063,7 @@ function buildCard(c, now){
   } else {
     actionsHtml = `
       <div class="actions">
-        <button class="action-btn picked" data-action="picked" data-id="${c.id}">รับผู้ป่วยแล้ว</button>
+        <button class="action-btn picked" data-action="picked" data-id="${c.id}">ส่งออกได้</button>
       </div>`;
   }
 
@@ -1110,8 +1109,6 @@ function buildCard(c, now){
 }
 
 function buildDeliveringCard(c, now){
-  const waitMs = now - (c.deliveringAt || c.readyAt || c.createdAt);
-
   let respDisplay = '';
   if (c.respiration && c.respiration !== 'Room air') {
     respDisplay = c.respiration;
@@ -1143,9 +1140,8 @@ function buildDeliveringCard(c, now){
       ${c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''}
     </div>
     ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
-    <div class="timer mono" data-case-id="${c.id}">นำส่งมาแล้ว ${elapsed(waitMs)}</div>
     <div class="actions">
-      <button class="action-btn primary" data-action="delivered" data-id="${c.id}">ถึงวอร์ดแล้ว</button>
+      <button class="action-btn primary" data-action="delivered" data-id="${c.id}">รับผู้ป่วยแล้ว</button>
     </div>
   `;
   return card;
