@@ -1005,6 +1005,8 @@ let pendingXray = null;
 let pendingNotes = '';
 let pendingTimeInRR = '';
 let pendingDeliverCaseId = null;
+let knownReadyIds = new Set();
+let firstDataLoadDone = false;
 
 // เกณฑ์เวลารอ: 30 นาที = เตือน (เหลือง) / 1 ชม. = เตือนมาก (แดง)
 const WARN_MS = 30 * 60 * 1000;
@@ -1016,6 +1018,31 @@ const HISTORY_RETENTION_MS = HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 const thaiDays = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
 const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+// เสียงแจ้งเตือนเมื่อมีเคสพร้อมส่งกลับวอร์ด (สังเคราะห์เสียงเอง ไม่ต้องใช้ไฟล์เสียง)
+function playReadySound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    const notes = [880, 1175]; // โน้ตคู่ ฟังดูสดใส คล้ายเสียง "ติ๊ง"
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const startTime = now + i * 0.13;
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.35, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + 0.5);
+    });
+  } catch(e){
+    console.error('เล่นเสียงแจ้งเตือนไม่สำเร็จ', e);
+  }
+}
 function fmtClock(){
   const d = new Date();
   document.getElementById('clock').textContent = d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -1124,6 +1151,17 @@ function fmtDate(dateStr){
 casesRef.on('value', (snapshot) => {
   const val = snapshot.val() || {};
   cases = Object.keys(val).map(id => ({ id, ...val[id] }));
+
+  // ตรวจจับเคสที่เพิ่งเด้งเข้าคอลัมน์ "พร้อมส่งกลับวอร์ด" เพื่อเล่นเสียงแจ้งเตือน
+  const currentReadyIds = new Set(cases.filter(c => c.status === 'ready').map(c => c.id));
+  if(firstDataLoadDone){
+    let hasNewReady = false;
+    currentReadyIds.forEach(id => { if(!knownReadyIds.has(id)) hasNewReady = true; });
+    if(hasNewReady) playReadySound();
+  }
+  knownReadyIds = currentReadyIds;
+  firstDataLoadDone = true;
+
   render();
   cleanupOldHistory();
 }, (err) => {
