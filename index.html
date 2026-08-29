@@ -325,15 +325,120 @@
     font-size:12px;
     cursor:pointer;
   }
-  .history{margin-top:12px;display:none;flex-direction:column;gap:8px;}
-  .history.open{display:flex;}
+  .history-panel{margin-top:14px;display:none;flex-direction:column;gap:14px;}
+  .history-panel.open{display:flex;}
+
+  .history-toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .history-search{
+    flex:1;
+    min-width:200px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:9px;
+    padding:9px 12px;
+    font-family:inherit;
+    font-size:13px;
+  }
+  .history-toolbar-actions{display:flex;gap:8px;}
+  .history-tool-btn{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:9px 14px;
+    border-radius:9px;
+    font-family:inherit;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .history-tool-btn:hover{filter:brightness(1.15);}
+
+  .history-summary{display:flex;gap:10px;flex-wrap:wrap;}
+  .summary-chip{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:8px 14px;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .summary-chip b{color:var(--text);font-size:14px;}
+
+  .history-groups{display:flex;flex-direction:column;gap:14px;}
+
+  .history-date-group{
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .history-date-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:6px;
+    padding:10px 14px;
+    background:var(--surface-2);
+    font-weight:700;
+    font-size:13px;
+  }
+  .history-date-stats{font-size:11px;color:var(--muted);font-weight:600;}
+
+  .history-shift-group{padding:10px 14px;border-top:1px solid var(--line);}
+  .history-shift-head{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    font-weight:700;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  .history-shift-head .shift-count{color:var(--text);}
+
   .history-row{
-    display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
     font-size:12px;color:var(--muted);
     background:var(--surface);
     border:1px solid var(--line);
     padding:8px 12px;
     border-radius:8px;
+    margin-bottom:8px;
+  }
+  .history-row:last-child{margin-bottom:0;}
+  .history-row-main{display:flex;flex-direction:column;gap:2px;min-width:160px;}
+  .history-ward{color:var(--text);font-weight:700;font-size:13px;}
+  .history-row-tags{font-size:11px;color:var(--muted);}
+  .history-row-times{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:11px;}
+  .history-duration{color:var(--picked);font-weight:700;}
+  .history-empty{
+    text-align:center;padding:30px 16px;color:var(--muted);
+    border:1px dashed var(--line);border-radius:12px;font-size:13px;
+  }
+
+  @media(max-width:640px){
+    .history-toolbar{flex-direction:column;align-items:stretch;}
+    .history-toolbar-actions{justify-content:stretch;}
+    .history-tool-btn{flex:1;}
+  }
+
+  @media print{
+    header, .add-btn, .add-btn-small, .history-toolbar, .history-toggle, .columns{display:none !important;}
+    body{background:#fff;color:#000;}
+    main{padding:0;max-width:none;}
+    .history-panel{display:flex !important;}
+    .history-date-group{border-color:#999;page-break-inside:avoid;}
+    .history-date-head{background:#eee;color:#000;}
+    .history-row{background:#fff;border-color:#ccc;color:#333;}
+    .history-ward{color:#000;}
+    .summary-chip{border-color:#999;color:#333;}
   }
 
   /* modal */
@@ -559,7 +664,17 @@
   </div>
 
   <button class="history-toggle" id="btnHistory">ดูประวัติที่รับส่งแล้ว ▾</button>
-  <div class="history" id="history"></div>
+  <div class="history-panel" id="historyPanel">
+    <div class="history-toolbar">
+      <input type="text" id="historySearch" class="history-search" placeholder="ค้นหาวอร์ด...">
+      <div class="history-toolbar-actions">
+        <button class="history-tool-btn" id="btnExportCsv">⬇ Export CSV</button>
+        <button class="history-tool-btn" id="btnPrintHistory">🖨 พิมพ์รายงาน</button>
+      </div>
+    </div>
+    <div class="history-summary" id="historySummary"></div>
+    <div class="history-groups" id="historyGroups"></div>
+  </div>
 </main>
 
 <!-- Modal เพิ่มผู้ป่วย -->
@@ -1193,29 +1308,116 @@ function buildDeliveringCard(c, now, order){
   return card;
 }
 
+let currentHistoryFiltered = [];
+
+function caseWaitDuration(c){
+  return c.pickedAt - (c.readyAt || c.waitingAt || c.createdAt);
+}
+
+function buildHistoryRowHtml(c){
+  const duration = caseWaitDuration(c);
+  let respDisplay = '';
+  if (c.respiration && c.respiration !== 'Room air') {
+    respDisplay = c.respiration;
+    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece'].includes(c.respiration)) {
+      respDisplay += ` (${c.o2Lpm} LPM)`;
+    }
+  }
+  const condInfo = [respDisplay, c.isInfection ? 'CRE/VRE' : ''].filter(Boolean).join(', ');
+  const tagParts = [
+    c.isPreOp ? '🔄 Pre-op' : '',
+    c.isFastTrack ? '⚡ FastTrack' : '',
+    condInfo ? `[${condInfo}]` : '',
+    c.deliveredBy ? `👤 ${escapeHtml(c.deliveredBy)}` : ''
+  ].filter(Boolean).join(' · ');
+
+  return `
+    <div class="history-row">
+      <div class="history-row-main">
+        <span class="history-ward">${escapeHtml(c.ward)}</span>
+        ${tagParts ? `<span class="history-row-tags">${tagParts}</span>` : ''}
+      </div>
+      <div class="history-row-times mono">
+        <span>เข้า RR ${fmtTimeOnly(c.createdAt)}</span>
+        <span>ส่งออก ${fmtTimeOnly(c.pickedAt)}</span>
+        <span class="history-duration">รอ ${elapsed(duration)}</span>
+      </div>
+    </div>`;
+}
+
 function renderHistory(){
-  const hist = cases.filter(c => c.status === 'picked' || c.status === 'preop-picked')
-    .sort((a,b) => b.pickedAt - a.pickedAt)
-    .slice(0, 15);
-  const el = document.getElementById('history');
+  const searchInput = document.getElementById('historySearch');
+  const query = (searchInput.value || '').trim().toLowerCase();
+
+  let hist = cases.filter(c => c.status === 'picked' || c.status === 'preop-picked');
+  if(query){
+    hist = hist.filter(c => (c.ward || '').toLowerCase().includes(query));
+  }
+  hist.sort((a,b) => b.pickedAt - a.pickedAt);
+  hist = hist.slice(0, 300); // กันลิสต์ยาวเกินไปถ้าสะสมมานาน
+
+  currentHistoryFiltered = hist;
+
+  const summaryEl = document.getElementById('historySummary');
+  const groupsEl = document.getElementById('historyGroups');
+
   if(hist.length === 0){
-    el.innerHTML = '<div class="history-row"><span>ยังไม่มีประวัติ</span></div>';
+    summaryEl.innerHTML = '';
+    groupsEl.innerHTML = `<div class="history-empty">${query ? 'ไม่พบวอร์ดที่ค้นหา' : 'ยังไม่มีประวัติ'}</div>`;
     return;
   }
-  el.innerHTML = hist.map(c => {
-    const duration = c.pickedAt - (c.readyAt || c.waitingAt || c.createdAt);
-    let respDisplay = '';
-    if (c.respiration && c.respiration !== 'Room air') {
-      respDisplay = c.respiration;
-      if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece'].includes(c.respiration)) {
-        respDisplay += ` (${c.o2Lpm} LPM)`;
-      }
-    }
-    const condInfo = [respDisplay, c.isInfection ? 'CRE/VRE' : ''].filter(Boolean).join(', ');
-    return `<div class="history-row">
-      <span>${fmtDate(c.date)} (${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}) · ${escapeHtml(c.ward)} ${c.isPreOp ? '🔄[Pre-op]' : ''} ${c.isFastTrack ? '⚡[FastTrack]' : ''} ${condInfo ? `[${condInfo}]` : ''} ${c.deliveredBy ? `👤[ผู้ส่ง: ${escapeHtml(c.deliveredBy)}]` : ''}</span>
-      <span>ใช้เวลารอ ${elapsed(duration)}</span>
-    </div>`;
+
+  const totalCount = hist.length;
+  const totalDuration = hist.reduce((s,c) => s + caseWaitDuration(c), 0);
+  const avgDuration = totalDuration / totalCount;
+  summaryEl.innerHTML = `
+    <div class="summary-chip">ทั้งหมด <b>${totalCount}</b> เคส</div>
+    <div class="summary-chip">เฉลี่ยรอ <b>${elapsed(avgDuration)}</b></div>
+  `;
+
+  // จัดกลุ่มตามวันที่ (ใหม่ไปเก่า)
+  const byDate = {};
+  hist.forEach(c => {
+    const key = c.date || '-';
+    if(!byDate[key]) byDate[key] = [];
+    byDate[key].push(c);
+  });
+  const dateKeys = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
+  const shiftOrder = ['☀️ เวรเช้า','⛅ เวรบ่าย','🌙 เวรดึก'];
+
+  groupsEl.innerHTML = dateKeys.map(dateKey => {
+    const dayCases = byDate[dateKey];
+    const dayCount = dayCases.length;
+    const dayAvg = dayCases.reduce((s,c) => s + caseWaitDuration(c), 0) / dayCount;
+
+    const byShift = {};
+    dayCases.forEach(c => {
+      const shift = getShiftName(c.pickedAt);
+      if(!byShift[shift]) byShift[shift] = [];
+      byShift[shift].push(c);
+    });
+
+    const shiftsHtml = shiftOrder.filter(s => byShift[s]).map(shift => {
+      const rows = byShift[shift];
+      const shiftAvg = rows.reduce((s,c) => s + caseWaitDuration(c), 0) / rows.length;
+      return `
+        <div class="history-shift-group">
+          <div class="history-shift-head">
+            <span>${shift}</span>
+            <span class="shift-count">${rows.length} คน · เฉลี่ยรอ ${elapsed(shiftAvg)}</span>
+          </div>
+          ${rows.map(c => buildHistoryRowHtml(c)).join('')}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="history-date-group">
+        <div class="history-date-head">
+          <span>${fmtDate(dateKey)}</span>
+          <span class="history-date-stats">${dayCount} คน · เฉลี่ยรอ ${elapsed(dayAvg)}</span>
+        </div>
+        ${shiftsHtml}
+      </div>`;
   }).join('');
 }
 
@@ -1439,10 +1641,65 @@ document.getElementById('btnGoReady').addEventListener('click', () => {
 
 // Toggle History
 const btnHistory = document.getElementById('btnHistory');
-const historyEl = document.getElementById('history');
+const historyPanelEl = document.getElementById('historyPanel');
 btnHistory.addEventListener('click', () => {
-  const isOpen = historyEl.classList.toggle('open');
+  const isOpen = historyPanelEl.classList.toggle('open');
   btnHistory.textContent = isOpen ? 'ซ่อนประวัติ ▴' : 'ดูประวัติที่รับส่งแล้ว ▾';
+});
+
+// ค้นหาประวัติตามวอร์ด (กรองสด)
+document.getElementById('historySearch').addEventListener('input', () => {
+  renderHistory();
+});
+
+// พิมพ์รายงานประวัติ
+document.getElementById('btnPrintHistory').addEventListener('click', () => {
+  if(!historyPanelEl.classList.contains('open')){
+    historyPanelEl.classList.add('open');
+    btnHistory.textContent = 'ซ่อนประวัติ ▴';
+  }
+  window.print();
+});
+
+// ส่งออกประวัติเป็นไฟล์ CSV (เปิดใน Excel ได้)
+document.getElementById('btnExportCsv').addEventListener('click', () => {
+  const rows = currentHistoryFiltered;
+  if(!rows || rows.length === 0){ alert('ไม่มีข้อมูลให้ส่งออก'); return; }
+
+  const header = ['วันที่','เวร','วอร์ด','เวลาเข้า RR','เวลาส่งออก','เวลารอ (นาที)','Pre-op','Fast Track','Respiration','O2 (LPM)','ติดเชื้อ CRE/VRE','ผู้ไปส่ง'];
+  const lines = [header.join(',')];
+
+  rows.forEach(c => {
+    const minutes = Math.round(caseWaitDuration(c) / 60000);
+    const fields = [
+      fmtDate(c.date),
+      getShiftName(c.pickedAt),
+      c.ward || '',
+      fmtTimeOnly(c.createdAt),
+      fmtTimeOnly(c.pickedAt),
+      minutes,
+      c.isPreOp ? 'Yes' : '',
+      c.isFastTrack ? 'Yes' : '',
+      c.respiration || '',
+      c.o2Lpm || '',
+      c.isInfection ? 'Yes' : '',
+      c.deliveredBy || ''
+    ];
+    lines.push(fields.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+  });
+
+  const csvContent = '\uFEFF' + lines.join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const stamp = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+  a.href = url;
+  a.download = `RR-stretcher-history-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 });
 </script>
 </body>
