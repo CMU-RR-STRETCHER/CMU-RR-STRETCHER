@@ -693,9 +693,9 @@ function elapsed(ms){
   const m = Math.floor((s%3600)/60);
   const rem = s%60;
   if(h > 0){
-    return h + ' ชม. ' + String(m).padStart(2,'0') + ' น. ' + String(rem).padStart(2,'0') + ' วิ';
+    return h + ' ชม. ' + String(m).padStart(2,'0') + ' Min ' + String(rem).padStart(2,'0') + ' Sec';
   }
-  return m + ' น. ' + String(rem).padStart(2,'0') + ' วิ';
+  return m + ' Min ' + String(rem).padStart(2,'0') + ' Sec';
 }
 
 function fmtTimeOnly(timestamp){
@@ -734,6 +734,19 @@ casesRef.on('value', (snapshot) => {
 }, (err) => {
   console.error('เชื่อมต่อฐานข้อมูลไม่สำเร็จ', err);
 });
+
+// อัปเดตตัวนับเวลา (รอมาแล้ว) แบบ real-time ทุกวินาที โดยไม่ต้องรอข้อมูลจาก Firebase เปลี่ยน
+setInterval(() => {
+  document.querySelectorAll('.timer[data-case-id]').forEach(el => {
+    const c = cases.find(x => x.id === el.dataset.caseId);
+    if(!c) return;
+    const now = Date.now();
+    const isReady = c.status === 'ready';
+    const isWaiting = c.status === 'waiting';
+    const waitMs = isReady ? now - c.readyAt : (isWaiting ? now - (c.waitingAt || c.createdAt) : 0);
+    el.textContent = 'รอมาแล้ว ' + elapsed(waitMs);
+  });
+}, 1000);
 
 function render(){
   const boardPrep = document.getElementById('boardPrep');
@@ -861,7 +874,7 @@ function buildCard(c, now){
       <div class="tl-step ${isWaiting ? 'current-waiting' : (isReady ? 'done' : '')}"></div>
       <div class="tl-step ${isReady ? (isFT ? 'current-fasttrack' : 'current') : ''}"></div>
     </div>
-    ${(isReady || isWaiting) ? `<div class="timer ${(isUrgent || isFT)?'warn':''} mono">รอมาแล้ว ${elapsed(waitMs)}</div>` : ''}
+    ${(isReady || isWaiting) ? `<div class="timer ${(isUrgent || isFT)?'warn':''} mono" data-case-id="${c.id}">รอมาแล้ว ${elapsed(waitMs)}</div>` : ''}
     ${actionsHtml}
   `;
   return card;
