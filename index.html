@@ -603,6 +603,30 @@
     color:var(--infection);
   }
 
+  .checkbox-toggle{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:9px;
+    cursor:pointer;
+  }
+  .checkbox-toggle input[type="checkbox"]{
+    width:18px;height:18px;cursor:pointer;
+  }
+  .checkbox-toggle span{
+    font-size:13px;font-weight:700;color:var(--text);
+  }
+  .checkbox-toggle.active{
+    background:rgba(77,168,255,0.15);
+    border-color:var(--picked);
+  }
+  .checkbox-toggle.active span{
+    color:var(--picked);
+  }
+
   /* Choice Modal Options */
   .choice-list{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
   .choice-btn{
@@ -852,6 +876,39 @@
     <div class="field">
       <label>วอร์ดต้นทาง (พิมพ์หรือเลือกวอร์ด)</label>
       <input type="text" id="preopWardInput" list="wardOptionsList" placeholder="พิมพ์ชื่อวอร์ดหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>ผู้ที่ไปรับ (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="preopReceiverInput" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>OR Room</label>
+      <select id="preopOrRoom">
+        <option value="">-- เลือกห้อง --</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16">16</option>
+        <option value="17">17</option>
+        <option value="18">18</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="checkbox-toggle" id="lblPreopBlock">
+        <input type="checkbox" id="chkPreopBlock">
+        <span>💉 เข้าห้อง Block</span>
+      </label>
     </div>
     <div class="field">
       <label>หมายเหตุ (ไม่บังคับ)</label>
@@ -1320,6 +1377,11 @@ function buildPreopCard(c, now, order){
         <div class="created-time-tag">${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}</div>
       </div>
     </div>
+    ${(c.receivedBy || c.orRoom || c.isBlock) ? `<div class="tags">
+      ${c.receivedBy ? `<span class="tag resp-tag">👤 ${escapeHtml(c.receivedBy)}</span>` : ''}
+      ${c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : ''}
+      ${c.isBlock ? `<span class="tag infection-tag">💉 Block</span>` : ''}
+    </div>` : ''}
     ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
     <div class="timer mono" data-case-id="${c.id}">รอมาแล้ว ${elapsed(waitMs)}</div>
     <div class="actions">
@@ -1486,7 +1548,10 @@ function buildHistoryRowHtml(c){
     c.isFastTrack ? '⚡ FastTrack' : '',
     c.isVIP ? '👑 VIP' : '',
     condInfo ? `[${condInfo}]` : '',
-    c.deliveredBy ? `👤 ${escapeHtml(c.deliveredBy)}` : ''
+    c.deliveredBy ? `👤 ${escapeHtml(c.deliveredBy)}` : '',
+    c.receivedBy ? `👤 ผู้รับ: ${escapeHtml(c.receivedBy)}` : '',
+    c.orRoom ? `🏥 OR ${escapeHtml(c.orRoom)}` : '',
+    c.isBlock ? '💉 Block' : ''
   ].filter(Boolean).join(' · ');
 
   return `
@@ -1599,6 +1664,10 @@ document.getElementById('btnAdd').addEventListener('click', () => {
 document.getElementById('btnAddPreop').addEventListener('click', () => {
   document.getElementById('preopWardInput').value = '';
   document.getElementById('preopNotes').value = '';
+  document.getElementById('preopReceiverInput').value = '';
+  document.getElementById('preopOrRoom').value = '';
+  document.getElementById('chkPreopBlock').checked = false;
+  document.getElementById('lblPreopBlock').classList.remove('active');
   document.getElementById('preopOverlay').classList.add('open');
 });
 
@@ -1606,16 +1675,29 @@ document.getElementById('btnPreopCancel').addEventListener('click', () => {
   document.getElementById('preopOverlay').classList.remove('open');
 });
 
+const lblPreopBlock = document.getElementById('lblPreopBlock');
+const chkPreopBlock = document.getElementById('chkPreopBlock');
+lblPreopBlock.addEventListener('click', (e) => {
+  if(e.target !== chkPreopBlock){
+    chkPreopBlock.checked = !chkPreopBlock.checked;
+  }
+  lblPreopBlock.classList.toggle('active', chkPreopBlock.checked);
+});
+
 document.getElementById('btnPreopSave').addEventListener('click', () => {
   const ward = document.getElementById('preopWardInput').value.trim();
   if(!ward){ alert('กรุณาระบุวอร์ดต้นทาง'); return; }
   const notes = document.getElementById('preopNotes').value.trim();
+  const receivedBy = document.getElementById('preopReceiverInput').value.trim();
+  const orRoom = document.getElementById('preopOrRoom').value;
+  const isBlock = chkPreopBlock.checked;
   const now = Date.now();
   const d = new Date(now);
   const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 
   casesRef.push({
     ward, notes,
+    receivedBy, orRoom, isBlock,
     status: 'preop',
     createdAt: now,
     date: dateStr,
@@ -1844,7 +1926,7 @@ document.getElementById('btnExportCsv').addEventListener('click', () => {
   const rows = currentHistoryFiltered;
   if(!rows || rows.length === 0){ alert('ไม่มีข้อมูลให้ส่งออก'); return; }
 
-  const header = ['วันที่','เวร','วอร์ด','เวลาเข้า RR','เวลาส่งออก','เวลารอ (นาที)','Pre-op','Fast Track','VIP','Respiration','O2 (LPM)','ติดเชื้อ CRE/VRE','ผู้ไปส่ง'];
+  const header = ['วันที่','เวร','วอร์ด','เวลาเข้า RR','เวลาส่งออก','เวลารอ (นาที)','Pre-op','Fast Track','VIP','Respiration','O2 (LPM)','ติดเชื้อ CRE/VRE','ผู้ไปส่ง','ผู้ไปรับ (Pre-op)','OR Room','เข้าห้อง Block'];
   const lines = [header.join(',')];
 
   rows.forEach(c => {
@@ -1862,7 +1944,10 @@ document.getElementById('btnExportCsv').addEventListener('click', () => {
       c.respiration || '',
       c.o2Lpm || '',
       c.isInfection ? 'Yes' : '',
-      c.deliveredBy || ''
+      c.deliveredBy || '',
+      c.receivedBy || '',
+      c.orRoom || '',
+      c.isBlock ? 'Yes' : ''
     ];
     lines.push(fields.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
   });
