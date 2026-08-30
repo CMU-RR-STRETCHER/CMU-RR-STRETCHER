@@ -655,6 +655,80 @@
   .choice-btn.to-waiting{border-color:var(--waiting);color:var(--waiting);}
   .choice-btn.to-ready{border-color:var(--ready);color:var(--ready);}
 
+  /* PIN pad modal */
+  .pin-modal{
+    align-items:center;
+    text-align:center;
+    max-width:320px;
+  }
+  .pin-modal h2{width:100%;}
+  .pin-subtitle{
+    font-size:13px;
+    color:var(--muted);
+    margin:0;
+  }
+  .pin-dots{
+    display:flex;
+    justify-content:center;
+    gap:14px;
+    margin:8px 0 4px;
+  }
+  .pin-dot{
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    background:transparent;
+    transition:background 0.15s, border-color 0.15s;
+  }
+  .pin-dot.filled{
+    background:var(--picked);
+    border-color:var(--picked);
+  }
+  .pin-dots.pin-error .pin-dot.filled{
+    background:var(--danger);
+    border-color:var(--danger);
+  }
+  .pin-dots.pin-error{
+    animation:pinShake 0.4s;
+  }
+  @keyframes pinShake{
+    0%,100%{transform:translateX(0);}
+    20%{transform:translateX(-8px);}
+    40%{transform:translateX(8px);}
+    60%{transform:translateX(-6px);}
+    80%{transform:translateX(6px);}
+  }
+  .pin-keypad{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:12px;
+    margin-top:8px;
+    width:100%;
+  }
+  .pin-key{
+    aspect-ratio:1;
+    border-radius:50%;
+    border:1px solid var(--line);
+    background:var(--surface-2);
+    color:var(--text);
+    font-family:inherit;
+    font-size:22px;
+    font-weight:600;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .pin-key:hover{filter:brightness(1.2);}
+  .pin-key:active{filter:brightness(0.85);}
+  .pin-key-empty{
+    background:transparent;
+    border:none;
+    cursor:default;
+  }
+  .pin-key-back{font-size:18px;}
+
   @media(max-width:520px){
     header{padding:16px;}
     main{padding:16px 16px 50px;}
@@ -1047,6 +1121,37 @@
       <button class="action-btn danger-outline" id="btnDelivererCancel" style="flex:1;">ยกเลิก</button>
       <button class="action-btn primary" id="btnDelivererConfirm" style="flex:1;">ยืนยัน</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal ใส่รหัสผ่านแบบ PIN pad (ใช้ยืนยันการทำรายการที่ต้องระวังเป็นพิเศษ เช่น ลบประวัติทั้งหมด) -->
+<div class="overlay" id="pinOverlay">
+  <div class="modal pin-modal">
+    <h2 id="pinTitle">ใส่รหัสผ่าน</h2>
+    <p class="pin-subtitle" id="pinSubtitle">กรุณาใส่รหัสเพื่อยืนยัน</p>
+    <div class="pin-dots" id="pinDots">
+      <span class="pin-dot"></span>
+      <span class="pin-dot"></span>
+      <span class="pin-dot"></span>
+      <span class="pin-dot"></span>
+      <span class="pin-dot"></span>
+      <span class="pin-dot"></span>
+    </div>
+    <div class="pin-keypad">
+      <button type="button" class="pin-key" data-digit="1">1</button>
+      <button type="button" class="pin-key" data-digit="2">2</button>
+      <button type="button" class="pin-key" data-digit="3">3</button>
+      <button type="button" class="pin-key" data-digit="4">4</button>
+      <button type="button" class="pin-key" data-digit="5">5</button>
+      <button type="button" class="pin-key" data-digit="6">6</button>
+      <button type="button" class="pin-key" data-digit="7">7</button>
+      <button type="button" class="pin-key" data-digit="8">8</button>
+      <button type="button" class="pin-key" data-digit="9">9</button>
+      <button type="button" class="pin-key pin-key-empty" tabindex="-1"></button>
+      <button type="button" class="pin-key" data-digit="0">0</button>
+      <button type="button" class="pin-key pin-key-back" id="pinBackspace">⌫</button>
+    </div>
+    <button class="action-btn danger-outline" id="pinCancelBtn" style="width:100%;margin-top:14px;">ยกเลิก</button>
   </div>
 </div>
 
@@ -1949,6 +2054,69 @@ document.getElementById('btnPrintHistory').addEventListener('click', () => {
 
 // ส่งออกประวัติเป็นไฟล์ CSV (เปิดใน Excel ได้)
 // ลบประวัติทั้งหมด (ถาวร ย้อนกลับไม่ได้) — มีการยืนยัน 2 ชั้นกันกดพลาด
+// ===== PIN pad modal (ใช้ยืนยันการทำรายการที่ต้องระวังเป็นพิเศษ) =====
+const PIN_LENGTH = 6;
+let pinValue = '';
+let pinCorrectCode = null;
+let pinOnSuccess = null;
+
+function showPinPrompt(subtitle, correctCode, onSuccess){
+  pinCorrectCode = correctCode;
+  pinOnSuccess = onSuccess;
+  pinValue = '';
+  document.getElementById('pinSubtitle').textContent = subtitle;
+  document.getElementById('pinDots').classList.remove('pin-error');
+  renderPinDots();
+  document.getElementById('pinOverlay').classList.add('open');
+}
+
+function closePinPrompt(){
+  document.getElementById('pinOverlay').classList.remove('open');
+  pinValue = '';
+  pinCorrectCode = null;
+  pinOnSuccess = null;
+}
+
+function renderPinDots(){
+  document.querySelectorAll('.pin-dot').forEach((d, i) => {
+    d.classList.toggle('filled', i < pinValue.length);
+  });
+}
+
+function handlePinDigit(digit){
+  if(pinValue.length >= PIN_LENGTH) return;
+  pinValue += digit;
+  renderPinDots();
+  if(pinValue.length === PIN_LENGTH){
+    setTimeout(() => {
+      if(pinValue === pinCorrectCode){
+        const cb = pinOnSuccess;
+        closePinPrompt();
+        if(cb) cb();
+      } else {
+        const dotsEl = document.getElementById('pinDots');
+        dotsEl.classList.add('pin-error');
+        setTimeout(() => {
+          dotsEl.classList.remove('pin-error');
+          pinValue = '';
+          renderPinDots();
+        }, 400);
+      }
+    }, 150);
+  }
+}
+
+document.querySelectorAll('.pin-key[data-digit]').forEach(btn => {
+  btn.addEventListener('click', () => handlePinDigit(btn.dataset.digit));
+});
+document.getElementById('pinBackspace').addEventListener('click', () => {
+  pinValue = pinValue.slice(0, -1);
+  renderPinDots();
+});
+document.getElementById('pinCancelBtn').addEventListener('click', () => {
+  closePinPrompt();
+});
+
 document.getElementById('btnClearHistory').addEventListener('click', () => {
   const histNow = cases.filter(c => c.status === 'picked' || c.status === 'preop-picked');
   if(histNow.length === 0){ alert('ไม่มีประวัติให้ลบ'); return; }
@@ -1956,15 +2124,10 @@ document.getElementById('btnClearHistory').addEventListener('click', () => {
   const step1 = confirm(`ต้องการลบประวัติทั้งหมด ${histNow.length} รายการใช่หรือไม่?\n\nการลบนี้ถาวร ย้อนกลับไม่ได้ แนะนำให้กด Export CSV เก็บไว้ก่อน ถ้ายังไม่ได้ทำ`);
   if(!step1) return;
 
-  const CLEAR_HISTORY_CODE = '541833';
-  const code = prompt('กรุณาใส่รหัสยืนยันเพื่อลบประวัติทั้งหมด');
-  if(code !== CLEAR_HISTORY_CODE){
-    alert('รหัสไม่ถูกต้อง ยกเลิกการลบ');
-    return;
-  }
-
-  histNow.forEach(c => casesRef.child(c.id).remove());
-  alert('ลบประวัติทั้งหมดเรียบร้อยแล้ว');
+  showPinPrompt('ใส่รหัสเพื่อยืนยันการลบประวัติทั้งหมด', '541833', () => {
+    histNow.forEach(c => casesRef.child(c.id).remove());
+    alert('ลบประวัติทั้งหมดเรียบร้อยแล้ว');
+  });
 });
 
 document.getElementById('btnExportCsv').addEventListener('click', () => {
