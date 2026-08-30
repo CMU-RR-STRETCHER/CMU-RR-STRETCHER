@@ -384,6 +384,11 @@
     white-space:nowrap;
   }
   .history-tool-btn:hover{filter:brightness(1.15);}
+  .history-tool-btn.danger{
+    background:var(--danger-dim);
+    border-color:var(--danger);
+    color:var(--danger);
+  }
 
   .history-summary{display:flex;gap:10px;flex-wrap:wrap;}
   .summary-chip{
@@ -724,6 +729,7 @@
       <div class="history-toolbar-actions">
         <button class="history-tool-btn" id="btnExportCsv">⬇ Export CSV</button>
         <button class="history-tool-btn" id="btnPrintHistory">🖨 พิมพ์รายงาน</button>
+        <button class="history-tool-btn danger" id="btnClearHistory">🗑 ลบประวัติทั้งหมด</button>
       </div>
     </div>
     <div class="history-retention-note">⏳ เก็บประวัติย้อนหลังไว้ 90 วัน ข้อมูลที่เก่ากว่านี้จะถูกลบอัตโนมัติและดูย้อนหลังไม่ได้ — ถ้าต้องเก็บรายงานไว้ ให้ Export CSV หรือพิมพ์เก็บไว้ก่อนหมดอายุ</div>
@@ -1942,6 +1948,25 @@ document.getElementById('btnPrintHistory').addEventListener('click', () => {
 });
 
 // ส่งออกประวัติเป็นไฟล์ CSV (เปิดใน Excel ได้)
+// ลบประวัติทั้งหมด (ถาวร ย้อนกลับไม่ได้) — มีการยืนยัน 2 ชั้นกันกดพลาด
+document.getElementById('btnClearHistory').addEventListener('click', () => {
+  const histNow = cases.filter(c => c.status === 'picked' || c.status === 'preop-picked');
+  if(histNow.length === 0){ alert('ไม่มีประวัติให้ลบ'); return; }
+
+  const step1 = confirm(`ต้องการลบประวัติทั้งหมด ${histNow.length} รายการใช่หรือไม่?\n\nการลบนี้ถาวร ย้อนกลับไม่ได้ แนะนำให้กด Export CSV เก็บไว้ก่อน ถ้ายังไม่ได้ทำ`);
+  if(!step1) return;
+
+  const CLEAR_HISTORY_CODE = '541833';
+  const code = prompt('กรุณาใส่รหัสยืนยันเพื่อลบประวัติทั้งหมด');
+  if(code !== CLEAR_HISTORY_CODE){
+    alert('รหัสไม่ถูกต้อง ยกเลิกการลบ');
+    return;
+  }
+
+  histNow.forEach(c => casesRef.child(c.id).remove());
+  alert('ลบประวัติทั้งหมดเรียบร้อยแล้ว');
+});
+
 document.getElementById('btnExportCsv').addEventListener('click', () => {
   const rows = currentHistoryFiltered;
   if(!rows || rows.length === 0){ alert('ไม่มีข้อมูลให้ส่งออก'); return; }
