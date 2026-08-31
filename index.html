@@ -1719,9 +1719,14 @@ function buildDeliveringCard(c, now, order){
 
   const xrayClass = c.xray === 'yes' ? 'xray-yes' : 'xray-no';
   const xrayText = c.xray === 'yes' ? 'X-ray' : 'ไม่ X-ray';
+  const isGoingDeliver = !!c.isGoingToDeliver;
+
+  const deliveredBtnHtml = isGoingDeliver
+    ? `<button class="action-btn going-btn" data-action="delivered" data-id="${c.id}"><span class="going-time mono">${fmtTimeOnly(c.goingToDeliverAt)}</span><span class="walk-anim">🚶</span> กำลังไปส่ง<span class="going-dots">.</span></button>`
+    : `<button class="action-btn primary" data-action="delivering-going" data-id="${c.id}">รับผู้ป่วยแล้ว</button>`;
 
   const card = document.createElement('div');
-  card.className = 'card status-delivering';
+  card.className = 'card status-delivering' + (isGoingDeliver ? ' status-preop-going' : '');
   card.innerHTML = `
     <div class="order-badge mono">${order}</div>
     <div class="card-top">
@@ -1732,11 +1737,13 @@ function buildDeliveringCard(c, now, order){
       </div>
       <div class="card-right-info">
         <div class="badge delivering">🚑 กำลังนำส่ง</div>
-        <div class="created-time-tag">👤 ${escapeHtml(c.deliveredBy || '-')}</div>
       </div>
     </div>
     <div class="tags">
       <span class="tag ${xrayClass}">${xrayText}</span>
+      ${c.deliveredBy
+        ? `<span class="tag resp-tag clickable" data-action="edit-deliverer" data-id="${c.id}">👤 ${escapeHtml(c.deliveredBy)} ✎</span>`
+        : `<span class="tag xray-no clickable" data-action="edit-deliverer" data-id="${c.id}">+ ระบุผู้ไปส่ง</span>`}
       ${c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
@@ -1744,7 +1751,7 @@ function buildDeliveringCard(c, now, order){
     </div>
     ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
     <div class="actions">
-      <button class="action-btn primary" data-action="delivered" data-id="${c.id}">รับผู้ป่วยแล้ว</button>
+      ${deliveredBtnHtml}
     </div>
   `;
   return card;
@@ -2022,6 +2029,17 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     document.getElementById('editReceiverOverlay').classList.add('open');
     return;
   }
+  if(tag && tag.dataset.action === 'edit-deliverer'){
+    const id = tag.dataset.id;
+    const c = cases.find(x => x.id === id);
+    if(!c) return;
+    pendingDeliverCaseId = id;
+    pendingDeliverMode = 'edit';
+    document.getElementById('delivererInput1').value = c.deliveredBy1 || '';
+    document.getElementById('delivererInput2').value = c.deliveredBy2 || '';
+    document.getElementById('deliverOverlay').classList.add('open');
+    return;
+  }
 
   const btn = e.target.closest('button');
   if(!btn) return;
@@ -2071,6 +2089,8 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     casesRef.child(id).update({ isGoingToReceive: true, goingToReceiveAt: Date.now() });
   } else if(action === 'preop-picked'){
     casesRef.child(id).update({ status: 'preop-picked', pickedAt: Date.now() });
+  } else if(action === 'delivering-going'){
+    casesRef.child(id).update({ isGoingToDeliver: true, goingToDeliverAt: Date.now() });
   } else if(action === 'delivered'){
     casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
   }
@@ -2135,6 +2155,13 @@ document.getElementById('btnDelivererConfirm').addEventListener('click', () => {
         deliveredBy2: deliverer2,
         deliveringAt: Date.now(),
         sentOutByClient: clientId
+      });
+    } else if(pendingDeliverMode === 'edit'){
+      // แก้ไขชื่อผู้ไปส่งของเคสที่อยู่ในคอลัมน์ "ส่งผู้ป่วยได้" อยู่แล้ว ไม่เปลี่ยนสถานะ
+      casesRef.child(pendingDeliverCaseId).update({
+        deliveredBy: combinedName,
+        deliveredBy1: deliverer1,
+        deliveredBy2: deliverer2
       });
     } else {
       // จาก Waiting area -> ไปประวัติตรงๆ ไม่มีเสียง แต่บันทึกชื่อผู้ไปส่งไว้ด้วย
