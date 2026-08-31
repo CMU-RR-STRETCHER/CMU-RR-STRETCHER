@@ -210,6 +210,10 @@
   .card.status-waiting{border-color:var(--waiting);}
   .card.status-ready{border-color:var(--ready);}
   .card.status-preop{border-color:var(--preop);}
+  .card.status-preop-going{
+    border-color:var(--prep);
+    box-shadow:0 0 10px rgba(255,184,77,0.3);
+  }
   .card.status-delivering{border-color:var(--transit);}
   .card.status-vip{
     border-color:var(--vip);
@@ -328,6 +332,25 @@
   .action-btn.waiting-btn{background:var(--waiting);color:#2A2000;}
   .action-btn.picked{background:var(--picked);color:#06203A;}
   .action-btn.danger-outline{background:transparent;color:var(--muted);border:1px solid var(--line);flex:0 0 auto;padding:10px 12px;}
+  .action-btn.going-btn{
+    background:var(--prep);
+    color:#3A2400;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+  }
+  .walk-anim{
+    display:inline-block;
+    font-size:15px;
+    animation:walkBounce 0.6s ease-in-out infinite;
+  }
+  @keyframes walkBounce{
+    0%, 100%{ transform:translateY(0) rotate(0deg); }
+    25%{ transform:translateY(-2px) rotate(-10deg); }
+    50%{ transform:translateY(0) rotate(0deg); }
+    75%{ transform:translateY(-2px) rotate(10deg); }
+  }
 
   /* history */
   .history-toggle{
@@ -1499,8 +1522,17 @@ function render(){
 
 function buildPreopCard(c, now, order){
   const waitMs = now - c.createdAt;
+  const isGoing = !!c.isGoingToReceive;
   const card = document.createElement('div');
-  card.className = 'card status-preop';
+  card.className = 'card status-preop' + (isGoing ? ' status-preop-going' : '');
+
+  const badgeText = isGoing ? '🚶 กำลังไปรับ' : 'รอรับเข้า OR';
+  const badgeClass = isGoing ? 'prep' : 'preop';
+
+  const receiveBtnHtml = isGoing
+    ? `<button class="action-btn going-btn" data-action="preop-picked" data-id="${c.id}"><span class="walk-anim">🚶</span> กำลังไปรับ...</button>`
+    : `<button class="action-btn picked" data-action="preop-going" data-id="${c.id}">รับผู้ป่วยแล้ว</button>`;
+
   card.innerHTML = `
     <div class="order-badge mono">${order}</div>
     <div class="card-top">
@@ -1510,7 +1542,7 @@ function buildPreopCard(c, now, order){
         <div class="date-line mono">${fmtDate(c.date)}</div>
       </div>
       <div class="card-right-info">
-        <div class="badge preop">รอรับเข้า OR</div>
+        <div class="badge ${badgeClass}">${badgeText}</div>
         <div class="created-time-tag">${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}</div>
       </div>
     </div>
@@ -1524,7 +1556,7 @@ function buildPreopCard(c, now, order){
     ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
     <div class="timer mono" data-case-id="${c.id}">รอมาแล้ว ${elapsed(waitMs)}</div>
     <div class="actions">
-      <button class="action-btn picked" data-action="preop-picked" data-id="${c.id}">รับผู้ป่วยแล้ว</button>
+      ${receiveBtnHtml}
       <button class="action-btn danger-outline" data-action="remove" data-id="${c.id}">ลบ</button>
     </div>
   `;
@@ -1933,6 +1965,8 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     document.getElementById('delivererInput1').value = '';
     document.getElementById('delivererInput2').value = '';
     document.getElementById('deliverOverlay').classList.add('open');
+  } else if(action === 'preop-going'){
+    casesRef.child(id).update({ isGoingToReceive: true, goingToReceiveAt: Date.now() });
   } else if(action === 'preop-picked'){
     casesRef.child(id).update({ status: 'preop-picked', pickedAt: Date.now() });
   } else if(action === 'delivered'){
