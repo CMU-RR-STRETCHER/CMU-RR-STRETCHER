@@ -340,9 +340,20 @@
     justify-content:center;
     gap:6px;
   }
+  .going-time{
+    font-size:12px;
+    font-weight:800;
+  }
   .walk-anim{
-    display:inline-block;
-    font-size:15px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 auto;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:var(--bg);
+    font-size:12px;
     animation:walkBounce 0.6s ease-in-out infinite;
   }
   @keyframes walkBounce{
@@ -350,6 +361,11 @@
     25%{ transform:translateY(-2px) rotate(-10deg); }
     50%{ transform:translateY(0) rotate(0deg); }
     75%{ transform:translateY(-2px) rotate(10deg); }
+  }
+  .going-dots{
+    display:inline-block;
+    min-width:1.1em;
+    text-align:left;
   }
 
   /* history */
@@ -1474,6 +1490,16 @@ setInterval(() => {
   });
 }, 1000);
 
+// ทำให้จุดใน "กำลังไปรับ..." ขยับ 1 จุด -> 2 จุด -> 3 จุด -> กลับ 1 จุด วนไปเรื่อยๆ
+let goingDotsCount = 1;
+setInterval(() => {
+  goingDotsCount = goingDotsCount >= 3 ? 1 : goingDotsCount + 1;
+  const dotsText = '.'.repeat(goingDotsCount);
+  document.querySelectorAll('.going-dots').forEach(el => {
+    el.textContent = dotsText;
+  });
+}, 450);
+
 function render(){
   const boardPreop = document.getElementById('boardPreop');
   const boardWaiting = document.getElementById('boardWaiting');
@@ -1530,7 +1556,7 @@ function buildPreopCard(c, now, order){
   const badgeClass = isGoing ? 'prep' : 'preop';
 
   const receiveBtnHtml = isGoing
-    ? `<button class="action-btn going-btn" data-action="preop-picked" data-id="${c.id}"><span class="walk-anim">🚶</span> กำลังไปรับ...</button>`
+    ? `<button class="action-btn going-btn" data-action="preop-picked" data-id="${c.id}"><span class="going-time mono">${fmtTimeOnly(c.goingToReceiveAt)}</span><span class="walk-anim">🚶</span> กำลังไปรับ<span class="going-dots">.</span></button>`
     : `<button class="action-btn picked" data-action="preop-going" data-id="${c.id}">รับผู้ป่วยแล้ว</button>`;
 
   card.innerHTML = `
