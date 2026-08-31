@@ -322,6 +322,7 @@
   .tag.resp-tag{background:var(--resp-dim);color:var(--resp);border:1px solid rgba(84,160,255,0.3);}
   .tag.infection-tag{background:var(--infection-dim);color:var(--infection);border:1px solid rgba(255,159,67,0.4);}
   .tag.vip-tag{background:var(--vip-dim);color:var(--vip);border:1px solid rgba(212,175,55,0.4);}
+  .tag.waiting-origin-tag{background:var(--waiting-dim);color:var(--waiting);border:1px solid rgba(255,209,102,0.4);}
 
   .notes{font-size:13px;color:var(--muted);background:var(--surface-2);padding:8px 10px;border-radius:8px;}
 
@@ -1117,6 +1118,10 @@
         <span>⚡ Fast Track</span>
         <span>➔</span>
       </button>
+      <button class="choice-btn to-waiting" id="btnGoWaiting">
+        <span>🟡 ย้ายไป Waiting Area</span>
+        <span>➔</span>
+      </button>
       <button class="choice-btn to-ready" id="btnGoReady">
         <span>🟢 พร้อมส่งกลับวอร์ด</span>
         <span>➔</span>
@@ -1643,8 +1648,6 @@ function buildCard(c, now, order){
     badgeClass = 'vip'; badgeText = '👑 VIP';
   } else if(isReady){
     badgeClass = 'ready'; badgeText = 'พร้อมส่งกลับ';
-  } else if(isWaiting){
-    badgeClass = 'waiting'; badgeText = 'Waiting Area';
   }
 
   let actionsHtml = '';
@@ -1683,12 +1686,13 @@ function buildCard(c, now, order){
         <div class="date-line mono">${fmtDate(c.date)}</div>
       </div>
       <div class="card-right-info">
-        <div class="badge ${badgeClass}">${badgeText}</div>
+        ${isWaiting ? '' : `<div class="badge ${badgeClass}">${badgeText}</div>`}
         <div class="created-time-tag">${cardTimeLabel(c)}</div>
       </div>
     </div>
     <div class="tags">
       ${xrayTagHtml}
+      ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
       ${c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''}
     </div>
@@ -1734,6 +1738,7 @@ function buildDeliveringCard(c, now, order){
     <div class="tags">
       <span class="tag ${xrayClass}">${xrayText}</span>
       ${c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : ''}
+      ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
       ${c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''}
     </div>
@@ -1765,6 +1770,7 @@ function buildHistoryRowHtml(c){
     c.isPreOp ? '🔄 Pre-op' : '',
     c.isFastTrack ? '⚡ FastTrack' : '',
     c.isVIP ? '👑 VIP' : '',
+    c.wasInWaitingArea ? '🟡 มาจาก Waiting Area' : '',
     condInfo ? `[${condInfo}]` : '',
     c.deliveredBy ? `👤 ${escapeHtml(c.deliveredBy)}` : '',
     c.receivedBy ? `👤 ผู้รับ: ${escapeHtml(c.receivedBy)}` : '',
@@ -2229,6 +2235,10 @@ document.getElementById('btnGoFastTrack').addEventListener('click', () => {
   pushNewCase({ status: 'ready', readyAt: Date.now(), isFastTrack: true });
 });
 
+document.getElementById('btnGoWaiting').addEventListener('click', () => {
+  pushNewCase({ status: 'ready', readyAt: Date.now(), isFastTrack: false, wasInWaitingArea: true });
+});
+
 document.getElementById('btnGoVIP').addEventListener('click', () => {
   pushNewCase({ status: 'ready', readyAt: Date.now(), isFastTrack: false, isVIP: true });
 });
@@ -2341,7 +2351,7 @@ document.getElementById('btnExportCsv').addEventListener('click', () => {
   const rows = currentHistoryFiltered;
   if(!rows || rows.length === 0){ alert('ไม่มีข้อมูลให้ส่งออก'); return; }
 
-  const header = ['วันที่','เวร','วอร์ด','เวลาเข้า RR','เวลาส่งออก','เวลารอ (นาที)','Pre-op','Fast Track','VIP','Respiration','O2 (LPM)','ติดเชื้อ CRE/VRE','ผู้ไปส่ง','ผู้ไปรับ (Pre-op)','OR Room','เข้าห้อง Block'];
+  const header = ['วันที่','เวร','วอร์ด','เวลาเข้า RR','เวลาส่งออก','เวลารอ (นาที)','Pre-op','Fast Track','VIP','มาจาก Waiting Area','Respiration','O2 (LPM)','ติดเชื้อ CRE/VRE','ผู้ไปส่ง','ผู้ไปรับ (Pre-op)','OR Room','เข้าห้อง Block'];
   const lines = [header.join(',')];
 
   rows.forEach(c => {
@@ -2356,6 +2366,7 @@ document.getElementById('btnExportCsv').addEventListener('click', () => {
       c.isPreOp ? 'Yes' : '',
       c.isFastTrack ? 'Yes' : '',
       c.isVIP ? 'Yes' : '',
+      c.wasInWaitingArea ? 'Yes' : '',
       c.respiration || '',
       c.o2Lpm || '',
       c.isInfection ? 'Yes' : '',
