@@ -180,7 +180,7 @@
     gap:14px;
     flex:1 1 auto;
     overflow-y:auto;
-    padding:14px 6px 6px 14px;
+    padding:14px 14px 14px 14px;
     scrollbar-width:thin;
     scrollbar-color:var(--line) transparent;
   }
@@ -239,6 +239,26 @@
     box-shadow:0 2px 8px rgba(0,0,0,0.4);
     z-index:2;
   }
+  .edit-badge{
+    position:absolute;
+    bottom:-10px;
+    right:-10px;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    background:var(--surface-2);
+    border:2px solid var(--line);
+    color:var(--text);
+    font-size:13px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+    cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+    z-index:2;
+  }
+  .edit-badge:hover{border-color:var(--picked);color:var(--picked);}
   .card.status-warn{border-color:var(--waiting);}
   .card.status-urgent{border-color:var(--danger);animation:urgentPulse 1.4s infinite;}
   .card.status-fasttrack{
@@ -854,7 +874,7 @@
 <!-- Modal เพิ่มผู้ป่วย -->
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h2>เพิ่มผู้ป่วยเข้าสู่คิว</h2>
+    <h2 id="addModalTitle">เพิ่มผู้ป่วยเข้าสู่คิว</h2>
     <div class="field">
       <label>วอร์ดปลายทาง (พิมพ์หรือเลือกวอร์ด)</label>
       <input type="text" id="wardInput" list="wardOptionsList" placeholder="พิมพ์ชื่อวอร์ดหรือเลือกจากรายการ..." autocomplete="off">
@@ -971,19 +991,12 @@
       </div>
     </div>
     <div class="field">
-      <label>X-ray</label>
-      <div class="xray-toggle">
-        <div class="xray-opt" id="optXrayYes" data-val="yes">X-ray</div>
-        <div class="xray-opt" id="optXrayNo" data-val="no">ไม่ X-ray</div>
-      </div>
-    </div>
-    <div class="field">
       <label>หมายเหตุ (อุปกรณ์/ข้อควรระวัง — ไม่บังคับ)</label>
       <textarea id="inNotes" placeholder="เช่น ต้องใช้เปลนอน, ให้ออกซิเจนระหว่างเคลื่อนย้าย"></textarea>
     </div>
     <div class="modal-actions">
       <button class="action-btn danger-outline" id="btnCancel" style="flex:1;">ยกเลิก</button>
-      <button class="action-btn primary" id="btnSave" style="flex:1;">ถัดไป ➔</button>
+      <button class="action-btn primary" id="btnSave" style="flex:1;">เพิ่มเข้าคิว</button>
     </div>
   </div>
 </div>
@@ -1049,7 +1062,14 @@
   <div class="modal">
     <h2>Condition ผู้ป่วย</h2>
     <div class="field">
-      <label>1. การหายใจ (Airway / Oxygen)</label>
+      <label>1. X-ray</label>
+      <div class="xray-toggle">
+        <div class="xray-opt" id="optXrayYes" data-val="yes">X-ray</div>
+        <div class="xray-opt" id="optXrayNo" data-val="no">ไม่ X-ray</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>2. การหายใจ (Airway / Oxygen)</label>
       <div class="resp-grid">
         <div class="resp-opt" data-val="Room air">Room air</div>
         <div class="resp-opt" data-val="Cannula">Cannula</div>
@@ -1075,7 +1095,7 @@
       </div>
     </div>
     <div class="field">
-      <label>2. การติดเชื้อ</label>
+      <label>3. การติดเชื้อ</label>
       <label class="infection-toggle" id="lblInfection">
         <input type="checkbox" id="chkInfection">
         <span>🦠 ติดเชื้อ CRE/VRE</span>
@@ -1095,10 +1115,6 @@
     <div class="choice-list">
       <button class="choice-btn to-fasttrack" id="btnGoFastTrack">
         <span>⚡ Fast Track</span>
-        <span>➔</span>
-      </button>
-      <button class="choice-btn to-waiting" id="btnGoWaiting">
-        <span>🟡 ย้ายไป Waiting Area</span>
         <span>➔</span>
       </button>
       <button class="choice-btn to-ready" id="btnGoReady">
@@ -1233,6 +1249,10 @@ let xraySelection = null;
 let selectedRespiration = 'Room air';
 let selectedInfection = false;
 let pendingWard = '';
+let editingWaitingFieldsCaseId = null;
+let pendingRouteCaseId = null;
+let pendingRouteOriginalCreatedAt = null;
+let pendingRouteOriginalDate = null;
 let pendingXray = null;
 let pendingNotes = '';
 let pendingTimeInRR = '';
@@ -1655,6 +1675,7 @@ function buildCard(c, now, order){
 
   card.innerHTML = `
     <div class="order-badge mono">${order}</div>
+    ${isWaiting ? `<div class="edit-badge" data-action="edit-waiting" data-id="${c.id}" title="แก้ไขวอร์ด/เวลา/หมายเหตุ">✎</div>` : ''}
     <div class="card-top">
       <div>
         <div class="ward-label">วอร์ดปลายทาง</div>
@@ -1849,12 +1870,12 @@ function escapeHtml(str){
 
 // Event Listeners สำหรับการทำงานต่างๆ ของหน้าเว็บ
 document.getElementById('btnAdd').addEventListener('click', () => {
+  editingWaitingFieldsCaseId = null;
+  document.getElementById('addModalTitle').textContent = 'เพิ่มผู้ป่วยเข้าสู่คิว';
+  document.getElementById('btnSave').textContent = 'เพิ่มเข้าคิว';
   document.getElementById('wardInput').value = '';
   document.getElementById('inNotes').value = '';
   setTimeInRRValue(nowHHMM());
-  xraySelection = null;
-  document.getElementById('optXrayYes').className = 'xray-opt';
-  document.getElementById('optXrayNo').className = 'xray-opt';
   document.getElementById('overlay').classList.add('open');
 });
 
@@ -1922,6 +1943,7 @@ document.getElementById('btnPreopSave').addEventListener('click', () => {
 
 document.getElementById('btnCancel').addEventListener('click', () => {
   document.getElementById('overlay').classList.remove('open');
+  editingWaitingFieldsCaseId = null;
 });
 
 document.getElementById('optXrayYes').addEventListener('click', () => {
@@ -1939,30 +1961,50 @@ document.getElementById('optXrayNo').addEventListener('click', () => {
 document.getElementById('btnSave').addEventListener('click', () => {
   const ward = document.getElementById('wardInput').value.trim();
   if(!ward){ alert('กรุณาระบุวอร์ดปลายทาง'); return; }
-  if(!xraySelection){ alert('กรุณาเลือกสถานะ X-ray'); return; }
   const notes = document.getElementById('inNotes').value.trim();
+  const timeInRRVal = getTimeInRRValue();
 
-  pendingWard = ward;
-  pendingXray = xraySelection;
-  pendingNotes = notes;
-  pendingTimeInRR = getTimeInRRValue();
+  if(editingWaitingFieldsCaseId){
+    // โหมดแก้ไขวอร์ด/Time in RR/หมายเหตุ ของเคสที่อยู่ใน "กำลังพักฟื้น" อยู่แล้ว
+    casesRef.child(editingWaitingFieldsCaseId).update({ ward, notes, timeInRR: timeInRRVal });
+    document.getElementById('overlay').classList.remove('open');
+    editingWaitingFieldsCaseId = null;
+    return;
+  }
+
+  // โหมดเพิ่มผู้ป่วยใหม่แบบเร็ว -> เข้าคอลัมน์ "กำลังพักฟื้น" ทันที ไม่ต้องกรอกรายละเอียดเพิ่ม
+  const now = Date.now();
+  const d = new Date(now);
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  casesRef.push({
+    ward, notes,
+    timeInRR: timeInRRVal,
+    status: 'waiting',
+    waitingAt: now,
+    createdAt: now,
+    date: dateStr
+  });
 
   document.getElementById('overlay').classList.remove('open');
-
-  // ไปต่อที่ขั้น Condition ผู้ป่วย
-  selectedRespiration = 'Room air';
-  selectedInfection = false;
-  document.getElementById('chkInfection').checked = false;
-  document.getElementById('lblInfection').classList.remove('active');
-  document.querySelectorAll('.resp-opt').forEach(opt => {
-    opt.classList.toggle('active', opt.dataset.val === 'Room air');
-  });
-  document.getElementById('o2FlowBox').style.display = 'none';
-  document.getElementById('conditionOverlay').classList.add('open');
 });
 
 // จัดการคลิกปุ่มต่างๆ ในบอร์ด
 document.querySelector('.columns').addEventListener('click', (e) => {
+  const editBadge = e.target.closest('.edit-badge');
+  if(editBadge && editBadge.dataset.action === 'edit-waiting'){
+    const id = editBadge.dataset.id;
+    const c = cases.find(x => x.id === id);
+    if(!c) return;
+    editingWaitingFieldsCaseId = id;
+    document.getElementById('addModalTitle').textContent = 'แก้ไขข้อมูลผู้ป่วย';
+    document.getElementById('btnSave').textContent = 'บันทึก';
+    document.getElementById('wardInput').value = c.ward || '';
+    document.getElementById('inNotes').value = c.notes || '';
+    setTimeInRRValue(c.timeInRR || nowHHMM());
+    document.getElementById('overlay').classList.add('open');
+    return;
+  }
+
   const tag = e.target.closest('.tag.clickable');
   if(tag && tag.dataset.action === 'edit-receiver'){
     const id = tag.dataset.id;
@@ -1986,11 +2028,39 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     }
   } else if(action === 'picked'){
     const c = cases.find(x => x.id === id);
-    pendingDeliverCaseId = id;
-    pendingDeliverMode = (c && c.status === 'ready') ? 'ready' : 'waiting';
-    document.getElementById('delivererInput1').value = '';
-    document.getElementById('delivererInput2').value = '';
-    document.getElementById('deliverOverlay').classList.add('open');
+    if(c && c.status === 'waiting'){
+      // จากคอลัมน์ "กำลังพักฟื้น" -> เปิดหน้า Condition (มี X-ray) ก่อน แล้วค่อยเลือกสถานะปลายทาง
+      pendingRouteCaseId = id;
+      pendingRouteOriginalCreatedAt = c.createdAt;
+      pendingRouteOriginalDate = c.date;
+      pendingWard = c.ward || '';
+      pendingNotes = c.notes || '';
+      pendingTimeInRR = c.timeInRR || '';
+
+      xraySelection = c.xray || null;
+      document.getElementById('optXrayYes').className = xraySelection === 'yes' ? 'xray-opt selected-yes' : 'xray-opt';
+      document.getElementById('optXrayNo').className = xraySelection === 'no' ? 'xray-opt selected-no' : 'xray-opt';
+
+      selectedRespiration = c.respiration || 'Room air';
+      selectedInfection = !!c.isInfection;
+      document.getElementById('chkInfection').checked = selectedInfection;
+      document.getElementById('lblInfection').classList.toggle('active', selectedInfection);
+      document.querySelectorAll('.resp-opt').forEach(opt => {
+        opt.classList.toggle('active', opt.dataset.val === selectedRespiration);
+      });
+      const showO2 = ['Cannula', 'Mask c bag', 'T-piece'].includes(selectedRespiration);
+      document.getElementById('o2FlowBox').style.display = showO2 ? 'flex' : 'none';
+      if(c.o2Lpm){ o2LpmSelect.value = String(c.o2Lpm); }
+
+      document.getElementById('conditionOverlay').classList.add('open');
+    } else {
+      // จากคอลัมน์ "พร้อมส่งกลับวอร์ด" -> เลือกผู้ไปส่งเหมือนเดิม
+      pendingDeliverCaseId = id;
+      pendingDeliverMode = 'ready';
+      document.getElementById('delivererInput1').value = '';
+      document.getElementById('delivererInput2').value = '';
+      document.getElementById('deliverOverlay').classList.add('open');
+    }
   } else if(action === 'preop-going'){
     casesRef.child(id).update({ isGoingToReceive: true, goingToReceiveAt: Date.now() });
   } else if(action === 'preop-picked'){
@@ -2099,18 +2169,22 @@ lblInfection.addEventListener('click', (e) => {
 
 document.getElementById('btnConditionCancel').addEventListener('click', () => {
   document.getElementById('conditionOverlay').classList.remove('open');
+  pendingRouteCaseId = null; pendingRouteOriginalCreatedAt = null; pendingRouteOriginalDate = null;
 });
 
 document.getElementById('btnConditionNext').addEventListener('click', () => {
+  if(!xraySelection){ alert('กรุณาเลือกสถานะ X-ray'); return; }
+  pendingXray = xraySelection;
   document.getElementById('conditionOverlay').classList.remove('open');
   document.getElementById('choiceOverlay').classList.add('open');
 });
 
 document.getElementById('btnChoiceCancel').addEventListener('click', () => {
   document.getElementById('choiceOverlay').classList.remove('open');
+  pendingRouteCaseId = null; pendingRouteOriginalCreatedAt = null; pendingRouteOriginalDate = null;
 });
 
-// เลือกสถานะปลายทางหลังจากกรอก Condition แล้วสร้างเคสใหม่เข้า Firebase
+// เลือกสถานะปลายทางหลังจากกรอก Condition แล้ว อัปเดตเคสเดิม (จากกำลังพักฟื้น) เข้า Firebase
 const o2LpmSelect = document.getElementById('selO2Lpm');
 
 function pushNewCase(extra){
@@ -2124,8 +2198,6 @@ function pushNewCase(extra){
     xray: pendingXray,
     notes: pendingNotes,
     timeInRR: pendingTimeInRR,
-    createdAt: now,
-    date: dateStr,
     respiration: selectedRespiration,
     o2Lpm: parseInt(o2LpmSelect.value),
     isInfection: selectedInfection,
@@ -2135,7 +2207,19 @@ function pushNewCase(extra){
     caseData.readyByClient = clientId; // ติดแท็กว่าเครื่องไหนเป็นคนกดให้พร้อมส่ง
   }
 
-  casesRef.push(caseData);
+  if(pendingRouteCaseId){
+    // กำลังนำเคสจากคอลัมน์ "กำลังพักฟื้น" ไปต่อ -> อัปเดตเคสเดิม ไม่สร้างใหม่ รักษาเวลาที่เข้า RR เดิมไว้
+    caseData.createdAt = pendingRouteOriginalCreatedAt || now;
+    caseData.date = pendingRouteOriginalDate || dateStr;
+    casesRef.child(pendingRouteCaseId).update(caseData);
+    pendingRouteCaseId = null;
+    pendingRouteOriginalCreatedAt = null;
+    pendingRouteOriginalDate = null;
+  } else {
+    caseData.createdAt = now;
+    caseData.date = dateStr;
+    casesRef.push(caseData);
+  }
 
   pendingWard = ''; pendingXray = null; pendingNotes = ''; pendingTimeInRR = '';
   document.getElementById('choiceOverlay').classList.remove('open');
@@ -2147,10 +2231,6 @@ document.getElementById('btnGoFastTrack').addEventListener('click', () => {
 
 document.getElementById('btnGoVIP').addEventListener('click', () => {
   pushNewCase({ status: 'ready', readyAt: Date.now(), isFastTrack: false, isVIP: true });
-});
-
-document.getElementById('btnGoWaiting').addEventListener('click', () => {
-  pushNewCase({ status: 'waiting', waitingAt: Date.now() });
 });
 
 document.getElementById('btnGoReady').addEventListener('click', () => {
