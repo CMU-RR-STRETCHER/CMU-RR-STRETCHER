@@ -1090,6 +1090,8 @@
       <input type="text" id="delivererInput2" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
       <datalist id="delivererOptionsList">
         <option value="ไม่มี"></option>
+        <option value="คนงาน"></option>
+        <option value="ธุรการ"></option>
         <option value="วิรัชฎา"></option>
         <option value="ลำดวน"></option>
         <option value="รุ่งทิวา"></option>
@@ -1125,6 +1127,25 @@
 </div>
 
 <!-- Modal ใส่รหัสผ่านแบบ PIN pad (ใช้ยืนยันการทำรายการที่ต้องระวังเป็นพิเศษ เช่น ลบประวัติทั้งหมด) -->
+<!-- Modal แก้ไขผู้ที่ไปรับ (สำหรับเคส Pre-op ที่เข้าคิวไปแล้ว) -->
+<div class="overlay" id="editReceiverOverlay">
+  <div class="modal">
+    <h2>แก้ไขผู้ที่ไปรับ</h2>
+    <div class="field">
+      <label>ผู้ที่ไปรับ คนที่ 1 (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="editReceiverInput1" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>ผู้ที่ไปรับ คนที่ 2 (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="editReceiverInput2" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn danger-outline" id="btnEditReceiverCancel" style="flex:1;">ยกเลิก</button>
+      <button class="action-btn primary" id="btnEditReceiverSave" style="flex:1;">บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="pinOverlay">
   <div class="modal pin-modal">
     <h2 id="pinTitle">ใส่รหัสผ่าน</h2>
@@ -1178,6 +1199,7 @@ let pendingNotes = '';
 let pendingTimeInRR = '';
 let pendingDeliverCaseId = null;
 let pendingDeliverMode = null;
+let pendingEditReceiverCaseId = null;
 let knownReadyIds = new Set();
 let knownDeliveringIds = new Set();
 let firstDataLoadDone = false;
@@ -1492,11 +1514,13 @@ function buildPreopCard(c, now, order){
         <div class="created-time-tag">${getShiftName(c.createdAt)} | ${fmtTimeOnly(c.createdAt)}</div>
       </div>
     </div>
-    ${(c.receivedBy || c.orRoom || c.isBlock) ? `<div class="tags">
-      ${c.receivedBy ? `<span class="tag resp-tag">👤 ${escapeHtml(c.receivedBy)}</span>` : ''}
+    <div class="tags">
+      ${c.receivedBy
+        ? `<span class="tag resp-tag clickable" data-action="edit-receiver" data-id="${c.id}">👤 ${escapeHtml(c.receivedBy)} ✎</span>`
+        : `<span class="tag xray-no clickable" data-action="edit-receiver" data-id="${c.id}">+ ระบุผู้ไปรับ</span>`}
       ${c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : ''}
       ${c.isBlock ? `<span class="tag infection-tag">💉 Block</span>` : ''}
-    </div>` : ''}
+    </div>
     ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
     <div class="timer mono" data-case-id="${c.id}">รอมาแล้ว ${elapsed(waitMs)}</div>
     <div class="actions">
@@ -1828,7 +1852,7 @@ document.getElementById('btnPreopSave').addEventListener('click', () => {
 
   casesRef.push({
     ward, notes,
-    receivedBy, orRoom, isBlock,
+    receivedBy, receivedBy1: r1, receivedBy2: r2, orRoom, isBlock,
     status: 'preop',
     createdAt: now,
     date: dateStr,
@@ -1881,6 +1905,18 @@ document.getElementById('btnSave').addEventListener('click', () => {
 
 // จัดการคลิกปุ่มต่างๆ ในบอร์ด
 document.querySelector('.columns').addEventListener('click', (e) => {
+  const tag = e.target.closest('.tag.clickable');
+  if(tag && tag.dataset.action === 'edit-receiver'){
+    const id = tag.dataset.id;
+    const c = cases.find(x => x.id === id);
+    if(!c) return;
+    pendingEditReceiverCaseId = id;
+    document.getElementById('editReceiverInput1').value = c.receivedBy1 || '';
+    document.getElementById('editReceiverInput2').value = c.receivedBy2 || '';
+    document.getElementById('editReceiverOverlay').classList.add('open');
+    return;
+  }
+
   const btn = e.target.closest('button');
   if(!btn) return;
   const action = btn.dataset.action;
@@ -1902,6 +1938,37 @@ document.querySelector('.columns').addEventListener('click', (e) => {
   } else if(action === 'delivered'){
     casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
   }
+});
+
+// Modal แก้ไขผู้ที่ไปรับ (สำหรับเคส Pre-op ที่เข้าคิวไปแล้ว)
+document.getElementById('btnEditReceiverCancel').addEventListener('click', () => {
+  document.getElementById('editReceiverOverlay').classList.remove('open');
+  pendingEditReceiverCaseId = null;
+});
+
+document.getElementById('btnEditReceiverSave').addEventListener('click', () => {
+  const r1 = document.getElementById('editReceiverInput1').value.trim();
+  const r2 = document.getElementById('editReceiverInput2').value.trim();
+  let receivedBy = '';
+  if(r1 && r2){
+    if(r1 === 'ไม่มี' && r2 === 'ไม่มี') receivedBy = '';
+    else if(r2 === 'ไม่มี') receivedBy = r1;
+    else if(r1 === 'ไม่มี') receivedBy = r2;
+    else receivedBy = `${r1} + ${r2}`;
+  } else if(r1){
+    receivedBy = r1;
+  } else if(r2){
+    receivedBy = r2;
+  }
+  if(pendingEditReceiverCaseId){
+    casesRef.child(pendingEditReceiverCaseId).update({
+      receivedBy,
+      receivedBy1: r1,
+      receivedBy2: r2
+    });
+  }
+  document.getElementById('editReceiverOverlay').classList.remove('open');
+  pendingEditReceiverCaseId = null;
 });
 
 // Modal เลือกผู้ไปส่งผู้ป่วย (ใช้ทั้งจากคอลัมน์ "พร้อมส่งกลับวอร์ด" และ "Waiting area")
