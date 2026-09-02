@@ -214,6 +214,21 @@
     flex-direction:column;
     gap:12px;
   }
+  .card.compact-going{
+    padding:10px 12px;
+    gap:8px;
+  }
+  .compact-delivery-row{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .ward-name-compact{
+    font-size:15px;
+    font-weight:700;
+    color:var(--text);
+  }
   .card.status-waiting{border-color:var(--waiting);}
   .card.status-ready{border-color:var(--ready);}
   .card.status-preop{border-color:var(--preop);}
@@ -1771,16 +1786,12 @@ function buildDeliveringCard(c, now, order){
   card.className = 'card status-delivering' + (isGoingDeliver ? ' status-preop-going' : '');
 
   if(isGoingDeliver){
-    // ระหว่างกำลังไปส่ง: ย่อให้เหลือแค่ข้อมูลจำเป็น วอร์ดปลายทาง / ผู้ไปส่ง / X-ray / ปุ่ม
+    // ระหว่างกำลังไปส่ง: ย่อให้เล็กที่สุด วอร์ด/X-ray/ผู้ไปส่งอยู่บรรทัดเดียวกัน
+    card.classList.add('compact-going');
     card.innerHTML = `
       <div class="order-badge mono">${order}</div>
-      <div class="card-top">
-        <div>
-          <div class="ward-label">วอร์ดปลายทาง</div>
-          <div class="ward-name">${escapeHtml(c.ward)}</div>
-        </div>
-      </div>
-      <div class="tags">
+      <div class="compact-delivery-row">
+        <span class="ward-name-compact">${escapeHtml(c.ward)}</span>
         <span class="tag ${xrayClass}">${xrayText}</span>
         ${delivererTagHtml}
       </div>
