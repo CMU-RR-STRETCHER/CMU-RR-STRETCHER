@@ -1329,7 +1329,23 @@ let knownDeliveringIds = new Set();
 let firstDataLoadDone = false;
 
 // รหัสประจำเครื่อง/แท็บนี้ สุ่มใหม่ทุกครั้งที่เปิดหน้าเว็บ ใช้แยกว่าเคส "พร้อมส่ง" เกิดจากเครื่องนี้เองหรือเครื่องอื่น
-const clientId = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+// รหัสประจำเครื่อง/เบราว์เซอร์นี้ เก็บไว้ถาวรใน localStorage เพื่อให้เหมือนเดิมทุกครั้งที่เปิดหน้าเว็บ (ไม่สุ่มใหม่ทุกครั้ง)
+// ใช้แยกว่าเคส "พร้อมส่ง" หรือ "เจ้าของเคส" เป็นของเครื่องนี้เองหรือเครื่องอื่น
+function getOrCreateClientId(){
+  const STORAGE_KEY = 'rrStretcherClientId';
+  try {
+    let id = localStorage.getItem(STORAGE_KEY);
+    if(!id){
+      id = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem(STORAGE_KEY, id);
+    }
+    return id;
+  } catch(e){
+    // เผื่อ localStorage ใช้งานไม่ได้ (เช่น โหมดส่วนตัวบางเบราว์เซอร์) ก็สุ่มแบบเดิมไปก่อน
+    return 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+  }
+}
+const clientId = getOrCreateClientId();
 
 // เกณฑ์เวลารอ: 30 นาที = เตือน (เหลือง) / 1 ชม. = เตือนมาก (แดง)
 const WARN_MS = 30 * 60 * 1000;
