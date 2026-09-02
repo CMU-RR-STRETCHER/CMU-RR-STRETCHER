@@ -1763,8 +1763,34 @@ function buildDeliveringCard(c, now, order){
     ? `<button class="action-btn going-btn" data-action="delivered" data-id="${c.id}"><span class="going-time mono">${fmtTimeOnly(c.goingToDeliverAt)}</span><span class="walk-anim">🚶</span> กำลังไปส่ง<span class="going-dots">.</span></button>`
     : `<button class="action-btn primary" data-action="delivering-going" data-id="${c.id}">รับผู้ป่วยแล้ว</button>`;
 
+  const delivererTagHtml = c.deliveredBy
+    ? `<span class="tag resp-tag clickable" data-action="edit-deliverer" data-id="${c.id}">👤 ${escapeHtml(c.deliveredBy)} ✎</span>`
+    : `<span class="tag xray-no clickable" data-action="edit-deliverer" data-id="${c.id}">+ ระบุผู้ไปส่ง</span>`;
+
   const card = document.createElement('div');
   card.className = 'card status-delivering' + (isGoingDeliver ? ' status-preop-going' : '');
+
+  if(isGoingDeliver){
+    // ระหว่างกำลังไปส่ง: ย่อให้เหลือแค่ข้อมูลจำเป็น วอร์ดปลายทาง / ผู้ไปส่ง / X-ray / ปุ่ม
+    card.innerHTML = `
+      <div class="order-badge mono">${order}</div>
+      <div class="card-top">
+        <div>
+          <div class="ward-label">วอร์ดปลายทาง</div>
+          <div class="ward-name">${escapeHtml(c.ward)}</div>
+        </div>
+      </div>
+      <div class="tags">
+        <span class="tag ${xrayClass}">${xrayText}</span>
+        ${delivererTagHtml}
+      </div>
+      <div class="actions">
+        ${deliveredBtnHtml}
+      </div>
+    `;
+    return card;
+  }
+
   card.innerHTML = `
     <div class="order-badge mono">${order}</div>
     <div class="card-top">
@@ -1779,9 +1805,7 @@ function buildDeliveringCard(c, now, order){
     </div>
     <div class="tags">
       <span class="tag ${xrayClass}">${xrayText}</span>
-      ${c.deliveredBy
-        ? `<span class="tag resp-tag clickable" data-action="edit-deliverer" data-id="${c.id}">👤 ${escapeHtml(c.deliveredBy)} ✎</span>`
-        : `<span class="tag xray-no clickable" data-action="edit-deliverer" data-id="${c.id}">+ ระบุผู้ไปส่ง</span>`}
+      ${delivererTagHtml}
       ${c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
