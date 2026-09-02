@@ -1724,6 +1724,7 @@ function buildCard(c, now, order){
     actionsHtml = `
       <div class="actions">
         <button class="action-btn picked" data-action="picked" data-id="${c.id}">ส่งออกได้</button>
+        <button class="action-btn danger-outline" data-action="back-to-waiting" data-id="${c.id}" title="ย้อนกลับไปกำลังพักฟื้น">↩</button>
       </div>`;
   }
 
@@ -1808,6 +1809,7 @@ function buildDeliveringCard(c, now, order){
       </div>
       <div class="actions">
         ${deliveredBtnHtml}
+        <button class="action-btn danger-outline" data-action="back-to-ready" data-id="${c.id}" title="ย้อนกลับไปพร้อมส่งกลับวอร์ด">↩</button>
       </div>
     `;
     return card;
@@ -1836,6 +1838,7 @@ function buildDeliveringCard(c, now, order){
     ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
     <div class="actions">
       ${deliveredBtnHtml}
+      <button class="action-btn danger-outline" data-action="back-to-ready" data-id="${c.id}" title="ย้อนกลับไปพร้อมส่งกลับวอร์ด">↩</button>
     </div>
   `;
   return card;
@@ -2187,6 +2190,14 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     casesRef.child(id).update({ isGoingToDeliver: true, goingToDeliverAt: Date.now() });
   } else if(action === 'delivered'){
     casesRef.child(id).update({ status: 'picked', pickedAt: Date.now() });
+  } else if(action === 'back-to-waiting'){
+    if(confirm('ย้อนกลับไปที่ "กำลังพักฟื้น" ใช่หรือไม่?')){
+      casesRef.child(id).update({ status: 'waiting', waitingAt: Date.now() });
+    }
+  } else if(action === 'back-to-ready'){
+    if(confirm('ย้อนกลับไปที่ "พร้อมส่งกลับวอร์ด" ใช่หรือไม่?')){
+      casesRef.child(id).update({ status: 'ready', readyAt: Date.now(), isGoingToDeliver: false });
+    }
   }
 });
 
