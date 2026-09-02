@@ -80,6 +80,13 @@
     width:auto;
     display:block;
     object-fit:contain;
+    animation:mascotWalk 0.9s ease-in-out infinite;
+  }
+  @keyframes mascotWalk{
+    0%, 100%{transform:translate(0,0) rotate(0deg);}
+    25%{transform:translate(1px,-3px) rotate(-3deg);}
+    50%{transform:translate(0,0) rotate(0deg);}
+    75%{transform:translate(-1px,-3px) rotate(3deg);}
   }
   .subtitle{font-size:12px;color:var(--muted);margin-top:2px;}
   .clock-stack{
@@ -92,6 +99,14 @@
   }
   .clock-stack #clockDate{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:2px;}
   .clock-stack #clock{font-size:24px;color:var(--text);letter-spacing:.5px;}
+  .clock-colon{
+    display:inline-block;
+    animation:colonBlink 1s step-end infinite;
+  }
+  @keyframes colonBlink{
+    0%, 49%{opacity:1;}
+    50%, 100%{opacity:.2;}
+  }
   @media(max-width:720px){
     .clock-stack{position:static;transform:none;order:3;width:100%;margin-top:4px;}
   }
@@ -323,6 +338,7 @@
   .tag.infection-tag{background:var(--infection-dim);color:var(--infection);border:1px solid rgba(255,159,67,0.4);}
   .tag.vip-tag{background:var(--vip-dim);color:var(--vip);border:1px solid rgba(212,175,55,0.4);}
   .tag.waiting-origin-tag{background:var(--waiting-dim);color:var(--waiting);border:1px solid rgba(255,209,102,0.4);}
+  .tag.owner-tag{background:var(--preop-dim);color:var(--preop);border:1px solid rgba(46,196,182,0.4);}
 
   .notes{font-size:13px;color:var(--muted);background:var(--surface-2);padding:8px 10px;border-radius:8px;}
 
@@ -991,6 +1007,32 @@
         <button type="button" class="time-now-btn" id="btnRRNow">ตอนนี้</button>
       </div>
     </div>
+    <div class="field" id="caseOwnerField">
+      <label>เจ้าของเคส (ไม่บังคับ)</label>
+      <select id="caseOwnerSelect">
+        <option value="">-- ไม่ระบุ --</option>
+        <option value="วัสพร">วัสพร</option>
+        <option value="อรุณี">อรุณี</option>
+        <option value="เลิศฤทธิ์">เลิศฤทธิ์</option>
+        <option value="กาญจนา">กาญจนา</option>
+        <option value="อารุณี">อารุณี</option>
+        <option value="เยาวนุช">เยาวนุช</option>
+        <option value="อิงอร">อิงอร</option>
+        <option value="ฉัตราภรณ์">ฉัตราภรณ์</option>
+        <option value="สายพิณ">สายพิณ</option>
+        <option value="พรรณา">พรรณา</option>
+        <option value="ชุติกาญจน์">ชุติกาญจน์</option>
+        <option value="สิรภัทร">สิรภัทร</option>
+        <option value="สิริวิชชา">สิริวิชชา</option>
+        <option value="จิตรทิวา">จิตรทิวา</option>
+        <option value="นิพัชรา">นิพัชรา</option>
+        <option value="พัชรินทร์">พัชรินทร์</option>
+        <option value="สุนิดา">สุนิดา</option>
+        <option value="สุมาลี">สุมาลี</option>
+        <option value="ศุภาณุวัชณ์">ศุภาณุวัชณ์</option>
+        <option value="พิมพ์พิชชา">พิมพ์พิชชา</option>
+      </select>
+    </div>
     <div class="field">
       <label>หมายเหตุ (อุปกรณ์/ข้อควรระวัง — ไม่บังคับ)</label>
       <textarea id="inNotes" placeholder="เช่น ต้องใช้เปลนอน, ให้ออกซิเจนระหว่างเคลื่อนย้าย"></textarea>
@@ -1343,7 +1385,11 @@ function playSentOutSound(){
 }
 function fmtClock(){
   const d = new Date();
-  document.getElementById('clock').textContent = d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').innerHTML =
+    `${hh}<span class="clock-colon">:</span>${mm}<span class="clock-colon">:</span>${ss}`;
   document.getElementById('clockDate').textContent =
     `วัน${thaiDays[d.getDay()]}ที่ ${d.getDate()} ${thaiMonths[d.getMonth()]} ${d.getFullYear()+543}`;
 }
@@ -1692,6 +1738,7 @@ function buildCard(c, now, order){
     </div>
     <div class="tags">
       ${xrayTagHtml}
+      ${(c.caseOwner && c.caseOwnerClientId === clientId) ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
       ${c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''}
@@ -1888,6 +1935,8 @@ document.getElementById('btnAdd').addEventListener('click', () => {
   document.getElementById('btnSave').textContent = 'เพิ่มเข้าคิว';
   document.getElementById('wardInput').value = '';
   document.getElementById('inNotes').value = '';
+  document.getElementById('caseOwnerSelect').value = '';
+  document.getElementById('caseOwnerField').style.display = '';
   setTimeInRRValue(nowHHMM());
   document.getElementById('overlay').classList.add('open');
 });
@@ -1989,14 +2038,21 @@ document.getElementById('btnSave').addEventListener('click', () => {
   const now = Date.now();
   const d = new Date(now);
   const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  casesRef.push({
+  const caseOwnerVal = document.getElementById('caseOwnerSelect').value;
+  const newCaseData = {
     ward, notes,
     timeInRR: timeInRRVal,
     status: 'waiting',
     waitingAt: now,
     createdAt: now,
     date: dateStr
-  });
+  };
+  if(caseOwnerVal){
+    // ติดแท็กรหัสเครื่องไว้ด้วย เพื่อให้แสดงเจ้าของเคสเฉพาะเครื่องที่กรอกเท่านั้น
+    newCaseData.caseOwner = caseOwnerVal;
+    newCaseData.caseOwnerClientId = clientId;
+  }
+  casesRef.push(newCaseData);
 
   document.getElementById('overlay').classList.remove('open');
 });
@@ -2013,6 +2069,7 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     document.getElementById('btnSave').textContent = 'บันทึก';
     document.getElementById('wardInput').value = c.ward || '';
     document.getElementById('inNotes').value = c.notes || '';
+    document.getElementById('caseOwnerField').style.display = 'none';
     setTimeInRRValue(c.timeInRR || nowHHMM());
     document.getElementById('overlay').classList.add('open');
     return;
