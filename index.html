@@ -1846,6 +1846,7 @@ function buildDeliveringCard(c, now, order){
     <div class="tags">
       <span class="tag ${xrayClass}">${xrayText}</span>
       ${delivererTagHtml}
+      ${(c.caseOwner && c.caseOwnerClientId === clientId) ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
       ${c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
