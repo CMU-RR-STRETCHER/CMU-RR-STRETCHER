@@ -1518,6 +1518,18 @@ function timeInRRMinutes(c){
   return 0;
 }
 
+// แปลง Time in RR (HH:MM) + วันที่ของเคส ให้เป็น timestamp จริง ใช้รันเวลา "กำลังพักฟื้นมาแล้ว" จนถึงตอนนี้
+function timeInRRTimestamp(c){
+  if(c.timeInRR && c.date){
+    const [hh, mm] = c.timeInRR.split(':').map(Number);
+    const [yyyy, mo, dd] = c.date.split('-').map(Number);
+    if(!isNaN(hh) && !isNaN(mm) && !isNaN(yyyy) && !isNaN(mo) && !isNaN(dd)){
+      return new Date(yyyy, mo - 1, dd, hh, mm, 0, 0).getTime();
+    }
+  }
+  return c.waitingAt || c.createdAt || Date.now();
+}
+
 function fmtDate(dateStr){
   if(!dateStr) return '';
   const [y,m,d] = dateStr.split('-');
@@ -1588,8 +1600,9 @@ setInterval(() => {
     let waitMs = 0;
     let label = 'รอมาแล้ว ';
     if(c.status === 'ready') waitMs = now - c.readyAt;
-    else if(c.status === 'waiting') waitMs = now - (c.waitingAt || c.createdAt);
+    else if(c.status === 'waiting'){ waitMs = now - timeInRRTimestamp(c); label = 'กำลังพักฟื้นมาแล้ว '; }
     else if(c.status === 'preop') waitMs = now - c.createdAt;
+    waitMs = Math.max(0, waitMs);
     el.textContent = label + elapsed(waitMs);
   });
 }, 1000);
@@ -1614,7 +1627,7 @@ function render(){
     .sort((a,b) => a.createdAt - b.createdAt);
 
   const waiting = cases.filter(c => c.status === 'waiting')
-    .sort((a,b) => (a.waitingAt || a.createdAt) - (b.waitingAt || b.createdAt));
+    .sort((a,b) => timeInRRMinutes(a) - timeInRRMinutes(b));
   
   const ready = cases.filter(c => c.status === 'ready')
     .sort((a,b) => {
@@ -1651,7 +1664,7 @@ function render(){
 }
 
 function buildPreopCard(c, now, order){
-  const waitMs = now - c.createdAt;
+  const waitMs = Math.max(0, now - c.createdAt);
   const isGoing = !!c.isGoingToReceive;
   const card = document.createElement('div');
   card.className = 'card status-preop' + (isGoing ? ' status-preop-going' : '');
@@ -1699,7 +1712,8 @@ function buildCard(c, now, order){
   const isFT = !!c.isFastTrack;
   const isVIP = !!c.isVIP;
 
-  const waitMs = isReady ? now - c.readyAt : (isWaiting ? now - (c.waitingAt || c.createdAt) : 0);
+  const waitMs = Math.max(0, isReady ? now - c.readyAt : (isWaiting ? now - timeInRRTimestamp(c) : 0));
+  const timerLabel = isWaiting ? 'กำลังพักฟื้นมาแล้ว ' : 'รอมาแล้ว ';
   // สถานะรอนาน: >= 30 นาที = เหลือง (caution), >= 1 ชม. = แดง (urgent) — ใช้เฉพาะการ์ดในคอลัมน์ "พร้อมส่งกลับวอร์ด" และไม่ใช่ Fast Track
   const isUrgent = isReady && !isFT && waitMs >= URGENT_MS;
   const isCaution = isReady && !isFT && !isUrgent && waitMs >= WARN_MS;
@@ -1783,7 +1797,7 @@ function buildCard(c, now, order){
       <div class="tl-step ${isWaiting ? 'current-waiting' : (isReady ? 'done' : '')}"></div>
       <div class="tl-step ${isReady ? (isFT ? 'current-fasttrack' : (isVIP ? 'current-vip' : 'current')) : ''}"></div>
     </div>
-    ${(isReady || isWaiting) ? `<div class="timer ${isUrgent ? 'warn' : (isCaution ? 'caution' : '')} mono" data-case-id="${c.id}">รอมาแล้ว ${elapsed(waitMs)}</div>` : ''}
+    ${(isReady || isWaiting) ? `<div class="timer ${isUrgent ? 'warn' : (isCaution ? 'caution' : '')} mono" data-case-id="${c.id}">${timerLabel}${elapsed(waitMs)}</div>` : ''}
     ${actionsHtml}
   `;
   return card;
