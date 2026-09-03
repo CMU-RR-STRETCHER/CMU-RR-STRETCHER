@@ -1935,6 +1935,23 @@ function buildHistoryRowHtml(c){
     c.isBlock ? `<span class="tag infection-tag">💉 Block</span>` : ''
   ].filter(Boolean).join('');
 
+  // ประวัติ RR แสดงไทม์ไลน์ละเอียด: Time in RR -> เวลาพักฟื้น -> กำลังไปส่ง -> ส่งออก -> รอ
+  // ส่วนประวัติ Pre-op ยังใช้แบบเดิม (เข้า RR / ส่งออก / รอ) เพราะฟิลด์เวลาต่างชุดกัน
+  const isPreopCase = c.status === 'preop-picked';
+  const timesHtml = isPreopCase
+    ? `
+      <span>เข้า RR ${fmtTimeOnly(c.createdAt)}</span>
+      <span>ส่งออก ${fmtTimeOnly(c.pickedAt)}</span>
+      <span class="history-duration">รอ ${elapsed(duration)}</span>
+    `
+    : `
+      <span>Time in RR ${c.timeInRR ? c.timeInRR + ' น.' : '-'}</span>
+      <span>เวลาพักฟื้น ${c.waitingAt ? fmtTimeOnly(c.waitingAt) : '-'}</span>
+      <span>กำลังไปส่ง ${c.goingToDeliverAt ? fmtTimeOnly(c.goingToDeliverAt) : '-'}</span>
+      <span>ส่งออก ${fmtTimeOnly(c.pickedAt)}</span>
+      <span class="history-duration">รอ ${elapsed(duration)}</span>
+    `;
+
   return `
     <div class="history-row">
       <div class="history-row-main">
@@ -1942,9 +1959,7 @@ function buildHistoryRowHtml(c){
         ${otherTags ? `<div class="history-tag-row">${otherTags}</div>` : ''}
       </div>
       <div class="history-row-times mono">
-        <span>เข้า RR ${fmtTimeOnly(c.createdAt)}</span>
-        <span>ส่งออก ${fmtTimeOnly(c.pickedAt)}</span>
-        <span class="history-duration">รอ ${elapsed(duration)}</span>
+        ${timesHtml}
       </div>
     </div>`;
 }
