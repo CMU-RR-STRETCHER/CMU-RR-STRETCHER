@@ -1924,38 +1924,31 @@ function buildHistoryRowHtml(c){
     }
   }
 
-  // หมวดสถานะ (Pre-op / Fast Track / VIP / มาจาก Waiting Area)
-  const statusTags = [
-    c.isPreOp ? `<span class="tag preop-hist-tag">🔄 Pre-op</span>` : '',
+  // Pre-op แยกแถวออกมาต่างหาก
+  const preopTag = c.isPreOp ? `<span class="tag preop-hist-tag">🔄 Pre-op</span>` : '';
+
+  // ที่เหลือรวมอยู่แถวเดียวกันหมด
+  const otherTags = [
     c.isFastTrack ? `<span class="tag fasttrack-hist-tag">⚡ Fast Track</span>` : '',
     c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : '',
-    c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 มาจาก Waiting Area</span>` : ''
-  ].filter(Boolean).join('');
-
-  // หมวด condition ผู้ป่วย (การหายใจ / ติดเชื้อ)
-  const conditionTags = [
+    c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 มาจาก Waiting Area</span>` : '',
     respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : '',
-    c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''
-  ].filter(Boolean).join('');
-
-  // หมวดบุคคล/สถานที่ (ผู้ไปส่ง / ผู้ไปรับ / OR Room / Block)
-  const peopleTags = [
+    c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : '',
     c.deliveredBy ? `<span class="tag resp-tag">🚑 ${escapeHtml(c.deliveredBy)}</span>` : '',
     c.receivedBy ? `<span class="tag resp-tag">👤 ${escapeHtml(c.receivedBy)}</span>` : '',
     c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : '',
     c.isBlock ? `<span class="tag infection-tag">💉 Block</span>` : ''
   ].filter(Boolean).join('');
 
-  const hasAnyTags = statusTags || conditionTags || peopleTags;
+  const hasAnyTags = preopTag || otherTags;
 
   return `
     <div class="history-row">
       <div class="history-row-main">
         <span class="history-ward">${escapeHtml(c.ward)}</span>
         ${hasAnyTags ? `<div class="history-row-taggroups">
-          ${statusTags ? `<div class="history-tag-row">${statusTags}</div>` : ''}
-          ${conditionTags ? `<div class="history-tag-row">${conditionTags}</div>` : ''}
-          ${peopleTags ? `<div class="history-tag-row">${peopleTags}</div>` : ''}
+          ${preopTag ? `<div class="history-tag-row">${preopTag}</div>` : ''}
+          ${otherTags ? `<div class="history-tag-row">${otherTags}</div>` : ''}
         </div>` : ''}
       </div>
       <div class="history-row-times mono">
