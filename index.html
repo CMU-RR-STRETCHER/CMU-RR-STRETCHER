@@ -1935,9 +1935,11 @@ function buildHistoryRowHtml(c){
     c.isBlock ? `<span class="tag infection-tag">💉 Block</span>` : ''
   ].filter(Boolean).join('');
 
-  // ประวัติ RR แสดงไทม์ไลน์ละเอียด: Time in RR -> เวลาพักฟื้น -> กำลังไปส่ง -> ส่งออก -> รอ
+  // ประวัติ RR แสดงไทม์ไลน์ละเอียด: Time in RR -> ระยะเวลาพักฟื้น -> กำลังไปส่ง -> รอ
   // ส่วนประวัติ Pre-op ยังใช้แบบเดิม (เข้า RR / ส่งออก / รอ) เพราะฟิลด์เวลาต่างชุดกัน
   const isPreopCase = c.status === 'preop-picked';
+  // ระยะเวลาที่อยู่ในสถานะ "กำลังพักฟื้น" จริงๆ นับจาก Time in RR จนถึงตอนกลายเป็น "พร้อมส่งกลับวอร์ด"
+  const recoveryDuration = c.readyAt ? Math.max(0, c.readyAt - timeInRRTimestamp(c)) : null;
   const timesHtml = isPreopCase
     ? `
       <span>เข้า RR ${fmtTimeOnly(c.createdAt)}</span>
@@ -1946,7 +1948,7 @@ function buildHistoryRowHtml(c){
     `
     : `
       <span>Time in RR ${c.timeInRR ? c.timeInRR + ' น.' : '-'}</span>
-      <span>เวลาพักฟื้น ${c.waitingAt ? fmtTimeOnly(c.waitingAt) : '-'}</span>
+      <span>เวลาพักฟื้น ${recoveryDuration !== null ? elapsed(recoveryDuration) : '-'}</span>
       <span>กำลังไปส่ง ${c.goingToDeliverAt ? fmtTimeOnly(c.goingToDeliverAt) : '-'}</span>
       <span class="history-duration">รอ ${elapsed(duration)}</span>
     `;
