@@ -453,20 +453,20 @@
     border-radius:9px;
     padding:8px 12px;
   }
-  .history-quick-filters{display:flex;flex-wrap:wrap;gap:8px;}
-  .history-filter-chip{
+  .history-subtabs{display:flex;gap:8px;}
+  .history-subtab{
     background:var(--surface-2);
     border:1px solid var(--line);
     color:var(--muted);
-    padding:7px 14px;
-    border-radius:100px;
+    padding:9px 18px;
+    border-radius:9px;
     font-family:inherit;
-    font-size:12px;
+    font-size:13px;
     font-weight:700;
     cursor:pointer;
   }
-  .history-filter-chip:hover{filter:brightness(1.15);}
-  .history-filter-chip.active{
+  .history-subtab:hover{filter:brightness(1.15);}
+  .history-subtab.active{
     background:var(--picked);
     border-color:var(--picked);
     color:#06203A;
@@ -917,6 +917,10 @@
 
   <button class="history-toggle" id="btnHistory">ดูประวัติที่รับส่งแล้ว ▾</button>
   <div class="history-panel" id="historyPanel">
+    <div class="history-subtabs" id="historySubtabs">
+      <button class="history-subtab active" data-tab="rr">ประวัติ RR</button>
+      <button class="history-subtab" data-tab="preop">ประวัติ Pre-op</button>
+    </div>
     <div class="history-toolbar">
       <input type="text" id="historySearch" class="history-search" placeholder="ค้นหาวอร์ด...">
       <div class="history-toolbar-actions">
@@ -924,12 +928,6 @@
         <button class="history-tool-btn" id="btnPrintHistory">🖨 พิมพ์รายงาน</button>
         <button class="history-tool-btn danger" id="btnClearHistory">🗑 ลบประวัติทั้งหมด</button>
       </div>
-    </div>
-    <div class="history-quick-filters" id="historyQuickFilters">
-      <button class="history-filter-chip active" data-filter="all">ทั้งหมด</button>
-      <button class="history-filter-chip" data-filter="vip">👑 VIP</button>
-      <button class="history-filter-chip" data-filter="fasttrack">⚡ Fast Track</button>
-      <button class="history-filter-chip" data-filter="preop">🔄 Pre-op</button>
     </div>
     <div class="history-retention-note">⏳ เก็บประวัติย้อนหลังไว้ 90 วัน ข้อมูลที่เก่ากว่านี้จะถูกลบอัตโนมัติและดูย้อนหลังไม่ได้ — ถ้าต้องเก็บรายงานไว้ ให้ Export CSV หรือพิมพ์เก็บไว้ก่อนหมดอายุ</div>
     <div class="history-summary" id="historySummary"></div>
@@ -1907,7 +1905,7 @@ function buildDeliveringCard(c, now, order){
 }
 
 let currentHistoryFiltered = [];
-let historyQuickFilter = 'all'; // 'all' | 'vip' | 'fasttrack' | 'preop'
+let historyActiveTab = 'rr'; // 'rr' | 'preop'
 let historyExpandedDates = null; // Set ของ dateKey ที่กางอยู่ (null = ยังไม่ init จะตั้งเป็น "วันนี้" ตอน render ครั้งแรก)
 
 function caseWaitDuration(c){
@@ -1924,10 +1922,7 @@ function buildHistoryRowHtml(c){
     }
   }
 
-  // Pre-op แยกแถวออกมาต่างหาก
-  const preopTag = c.isPreOp ? `<span class="tag preop-hist-tag">🔄 Pre-op</span>` : '';
-
-  // ที่เหลือรวมอยู่แถวเดียวกันหมด
+  // รวมทุกแท็กไว้แถวเดียวกันหมด (ไม่ต้องมีป้าย Pre-op ซ้ำ เพราะแยกแท็บไว้ชัดเจนแล้ว)
   const otherTags = [
     c.isFastTrack ? `<span class="tag fasttrack-hist-tag">⚡ Fast Track</span>` : '',
     c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : '',
@@ -1940,16 +1935,11 @@ function buildHistoryRowHtml(c){
     c.isBlock ? `<span class="tag infection-tag">💉 Block</span>` : ''
   ].filter(Boolean).join('');
 
-  const hasAnyTags = preopTag || otherTags;
-
   return `
     <div class="history-row">
       <div class="history-row-main">
         <span class="history-ward">${escapeHtml(c.ward)}</span>
-        ${hasAnyTags ? `<div class="history-row-taggroups">
-          ${preopTag ? `<div class="history-tag-row">${preopTag}</div>` : ''}
-          ${otherTags ? `<div class="history-tag-row">${otherTags}</div>` : ''}
-        </div>` : ''}
+        ${otherTags ? `<div class="history-tag-row">${otherTags}</div>` : ''}
       </div>
       <div class="history-row-times mono">
         <span>เข้า RR ${fmtTimeOnly(c.createdAt)}</span>
@@ -1963,10 +1953,7 @@ function renderHistory(){
   const searchInput = document.getElementById('historySearch');
   const query = (searchInput.value || '').trim().toLowerCase();
 
-  let hist = cases.filter(c => c.status === 'picked' || c.status === 'preop-picked');
-  if(historyQuickFilter === 'vip') hist = hist.filter(c => c.isVIP);
-  else if(historyQuickFilter === 'fasttrack') hist = hist.filter(c => c.isFastTrack);
-  else if(historyQuickFilter === 'preop') hist = hist.filter(c => c.isPreOp);
+  let hist = cases.filter(c => historyActiveTab === 'preop' ? c.status === 'preop-picked' : c.status === 'picked');
   if(query){
     hist = hist.filter(c => (c.ward || '').toLowerCase().includes(query));
   }
@@ -1980,7 +1967,7 @@ function renderHistory(){
 
   if(hist.length === 0){
     summaryEl.innerHTML = '';
-    groupsEl.innerHTML = `<div class="history-empty">${(query || historyQuickFilter !== 'all') ? 'ไม่พบรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีประวัติ'}</div>`;
+    groupsEl.innerHTML = `<div class="history-empty">${query ? 'ไม่พบวอร์ดที่ค้นหา' : (historyActiveTab === 'preop' ? 'ยังไม่มีประวัติ Pre-op' : 'ยังไม่มีประวัติ RR')}</div>`;
     return;
   }
 
@@ -2057,13 +2044,13 @@ document.getElementById('historyGroups').addEventListener('click', (e) => {
   renderHistory();
 });
 
-// ปุ่มกรองด่วนในประวัติ (ทั้งหมด / VIP / Fast Track / Pre-op)
-document.getElementById('historyQuickFilters').addEventListener('click', (e) => {
-  const btn = e.target.closest('.history-filter-chip');
+// แท็บแยกประวัติ RR / Pre-op
+document.getElementById('historySubtabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.history-subtab');
   if(!btn) return;
-  historyQuickFilter = btn.dataset.filter;
-  document.querySelectorAll('.history-filter-chip').forEach(b => {
-    b.classList.toggle('active', b.dataset.filter === historyQuickFilter);
+  historyActiveTab = btn.dataset.tab;
+  document.querySelectorAll('.history-subtab').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === historyActiveTab);
   });
   renderHistory();
 });
