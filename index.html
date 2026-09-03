@@ -453,6 +453,24 @@
     border-radius:9px;
     padding:8px 12px;
   }
+  .history-quick-filters{display:flex;flex-wrap:wrap;gap:8px;}
+  .history-filter-chip{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--muted);
+    padding:7px 14px;
+    border-radius:100px;
+    font-family:inherit;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .history-filter-chip:hover{filter:brightness(1.15);}
+  .history-filter-chip.active{
+    background:var(--picked);
+    border-color:var(--picked);
+    color:#06203A;
+  }
   .history-search{
     flex:1;
     min-width:200px;
@@ -512,7 +530,10 @@
     background:var(--surface-2);
     font-weight:700;
     font-size:13px;
+    cursor:pointer;
+    user-select:none;
   }
+  .history-date-head:hover{filter:brightness(1.15);}
   .history-date-stats{font-size:11px;color:var(--muted);font-weight:600;}
 
   .history-shift-group{padding:10px 14px;border-top:1px solid var(--line);}
@@ -536,9 +557,13 @@
     margin-bottom:8px;
   }
   .history-row:last-child{margin-bottom:0;}
-  .history-row-main{display:flex;flex-direction:column;gap:2px;min-width:160px;}
+  .history-row-main{display:flex;flex-direction:column;gap:4px;min-width:160px;}
   .history-ward{color:var(--text);font-weight:700;font-size:13px;}
-  .history-row-tags{font-size:11px;color:var(--muted);}
+  .history-row-taggroups{display:flex;flex-direction:column;gap:4px;}
+  .history-tag-row{display:flex;flex-wrap:wrap;gap:4px;}
+  .history-tag-row .tag{font-size:10px;padding:3px 8px;}
+  .tag.preop-hist-tag{background:var(--preop-dim);color:var(--preop);border:1px solid rgba(46,196,182,0.4);}
+  .tag.fasttrack-hist-tag{background:var(--danger-dim);color:var(--danger);border:1px solid rgba(255,107,107,0.4);}
   .history-row-times{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:11px;}
   .history-duration{color:var(--picked);font-weight:700;}
   .history-empty{
@@ -899,6 +924,12 @@
         <button class="history-tool-btn" id="btnPrintHistory">🖨 พิมพ์รายงาน</button>
         <button class="history-tool-btn danger" id="btnClearHistory">🗑 ลบประวัติทั้งหมด</button>
       </div>
+    </div>
+    <div class="history-quick-filters" id="historyQuickFilters">
+      <button class="history-filter-chip active" data-filter="all">ทั้งหมด</button>
+      <button class="history-filter-chip" data-filter="vip">👑 VIP</button>
+      <button class="history-filter-chip" data-filter="fasttrack">⚡ Fast Track</button>
+      <button class="history-filter-chip" data-filter="preop">🔄 Pre-op</button>
     </div>
     <div class="history-retention-note">⏳ เก็บประวัติย้อนหลังไว้ 90 วัน ข้อมูลที่เก่ากว่านี้จะถูกลบอัตโนมัติและดูย้อนหลังไม่ได้ — ถ้าต้องเก็บรายงานไว้ ให้ Export CSV หรือพิมพ์เก็บไว้ก่อนหมดอายุ</div>
     <div class="history-summary" id="historySummary"></div>
@@ -1876,6 +1907,8 @@ function buildDeliveringCard(c, now, order){
 }
 
 let currentHistoryFiltered = [];
+let historyQuickFilter = 'all'; // 'all' | 'vip' | 'fasttrack' | 'preop'
+let historyExpandedDates = null; // Set ของ dateKey ที่กางอยู่ (null = ยังไม่ init จะตั้งเป็น "วันนี้" ตอน render ครั้งแรก)
 
 function caseWaitDuration(c){
   return c.pickedAt - (c.readyAt || c.waitingAt || c.createdAt);
@@ -1890,24 +1923,40 @@ function buildHistoryRowHtml(c){
       respDisplay += ` (${c.o2Lpm} LPM)`;
     }
   }
-  const condInfo = [respDisplay, c.isInfection ? 'CRE/VRE' : ''].filter(Boolean).join(', ');
-  const tagParts = [
-    c.isPreOp ? '🔄 Pre-op' : '',
-    c.isFastTrack ? '⚡ FastTrack' : '',
-    c.isVIP ? '👑 VIP' : '',
-    c.wasInWaitingArea ? '🟡 มาจาก Waiting Area' : '',
-    condInfo ? `[${condInfo}]` : '',
-    c.deliveredBy ? `👤 ${escapeHtml(c.deliveredBy)}` : '',
-    c.receivedBy ? `👤 ผู้รับ: ${escapeHtml(c.receivedBy)}` : '',
-    c.orRoom ? `🏥 OR ${escapeHtml(c.orRoom)}` : '',
-    c.isBlock ? '💉 Block' : ''
-  ].filter(Boolean).join(' · ');
+
+  // หมวดสถานะ (Pre-op / Fast Track / VIP / มาจาก Waiting Area)
+  const statusTags = [
+    c.isPreOp ? `<span class="tag preop-hist-tag">🔄 Pre-op</span>` : '',
+    c.isFastTrack ? `<span class="tag fasttrack-hist-tag">⚡ Fast Track</span>` : '',
+    c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : '',
+    c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 มาจาก Waiting Area</span>` : ''
+  ].filter(Boolean).join('');
+
+  // หมวด condition ผู้ป่วย (การหายใจ / ติดเชื้อ)
+  const conditionTags = [
+    respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : '',
+    c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''
+  ].filter(Boolean).join('');
+
+  // หมวดบุคคล/สถานที่ (ผู้ไปส่ง / ผู้ไปรับ / OR Room / Block)
+  const peopleTags = [
+    c.deliveredBy ? `<span class="tag resp-tag">🚑 ${escapeHtml(c.deliveredBy)}</span>` : '',
+    c.receivedBy ? `<span class="tag resp-tag">👤 ${escapeHtml(c.receivedBy)}</span>` : '',
+    c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : '',
+    c.isBlock ? `<span class="tag infection-tag">💉 Block</span>` : ''
+  ].filter(Boolean).join('');
+
+  const hasAnyTags = statusTags || conditionTags || peopleTags;
 
   return `
     <div class="history-row">
       <div class="history-row-main">
         <span class="history-ward">${escapeHtml(c.ward)}</span>
-        ${tagParts ? `<span class="history-row-tags">${tagParts}</span>` : ''}
+        ${hasAnyTags ? `<div class="history-row-taggroups">
+          ${statusTags ? `<div class="history-tag-row">${statusTags}</div>` : ''}
+          ${conditionTags ? `<div class="history-tag-row">${conditionTags}</div>` : ''}
+          ${peopleTags ? `<div class="history-tag-row">${peopleTags}</div>` : ''}
+        </div>` : ''}
       </div>
       <div class="history-row-times mono">
         <span>เข้า RR ${fmtTimeOnly(c.createdAt)}</span>
@@ -1922,6 +1971,9 @@ function renderHistory(){
   const query = (searchInput.value || '').trim().toLowerCase();
 
   let hist = cases.filter(c => c.status === 'picked' || c.status === 'preop-picked');
+  if(historyQuickFilter === 'vip') hist = hist.filter(c => c.isVIP);
+  else if(historyQuickFilter === 'fasttrack') hist = hist.filter(c => c.isFastTrack);
+  else if(historyQuickFilter === 'preop') hist = hist.filter(c => c.isPreOp);
   if(query){
     hist = hist.filter(c => (c.ward || '').toLowerCase().includes(query));
   }
@@ -1935,7 +1987,7 @@ function renderHistory(){
 
   if(hist.length === 0){
     summaryEl.innerHTML = '';
-    groupsEl.innerHTML = `<div class="history-empty">${query ? 'ไม่พบวอร์ดที่ค้นหา' : 'ยังไม่มีประวัติ'}</div>`;
+    groupsEl.innerHTML = `<div class="history-empty">${(query || historyQuickFilter !== 'all') ? 'ไม่พบรายการที่ตรงกับตัวกรอง' : 'ยังไม่มีประวัติ'}</div>`;
     return;
   }
 
@@ -1957,10 +2009,18 @@ function renderHistory(){
   const dateKeys = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
   const shiftOrder = ['☀️ เวรเช้า','⛅ เวรบ่าย','🌙 เวรดึก'];
 
+  // ค่าเริ่มต้น: กางแค่ "วันนี้" ไว้ ส่วนวันอื่นพับไว้ก่อน (ตั้งครั้งแรกเท่านั้น ไม่รีเซ็ตทุกครั้งที่ข้อมูลอัปเดต)
+  if(historyExpandedDates === null){
+    const td = new Date();
+    const todayStr = td.getFullYear() + '-' + String(td.getMonth()+1).padStart(2,'0') + '-' + String(td.getDate()).padStart(2,'0');
+    historyExpandedDates = new Set([todayStr]);
+  }
+
   groupsEl.innerHTML = dateKeys.map(dateKey => {
     const dayCases = byDate[dateKey];
     const dayCount = dayCases.length;
     const dayAvg = dayCases.reduce((s,c) => s + caseWaitDuration(c), 0) / dayCount;
+    const isExpanded = historyExpandedDates.has(dateKey);
 
     const byShift = {};
     dayCases.forEach(c => {
@@ -1984,14 +2044,36 @@ function renderHistory(){
 
     return `
       <div class="history-date-group">
-        <div class="history-date-head">
-          <span>${fmtDate(dateKey)}</span>
+        <div class="history-date-head" data-toggle-date="${dateKey}">
+          <span>${isExpanded ? '▾' : '▸'} ${fmtDate(dateKey)}</span>
           <span class="history-date-stats">${dayCount} คน · เฉลี่ยรอ ${elapsed(dayAvg)}</span>
         </div>
-        ${shiftsHtml}
+        ${isExpanded ? shiftsHtml : ''}
       </div>`;
   }).join('');
 }
+
+// กด header ของแต่ละวันที่ในประวัติ เพื่อพับ/กางดูรายละเอียดวันนั้น
+document.getElementById('historyGroups').addEventListener('click', (e) => {
+  const head = e.target.closest('.history-date-head');
+  if(!head) return;
+  const dateKey = head.dataset.toggleDate;
+  if(!dateKey || !historyExpandedDates) return;
+  if(historyExpandedDates.has(dateKey)) historyExpandedDates.delete(dateKey);
+  else historyExpandedDates.add(dateKey);
+  renderHistory();
+});
+
+// ปุ่มกรองด่วนในประวัติ (ทั้งหมด / VIP / Fast Track / Pre-op)
+document.getElementById('historyQuickFilters').addEventListener('click', (e) => {
+  const btn = e.target.closest('.history-filter-chip');
+  if(!btn) return;
+  historyQuickFilter = btn.dataset.filter;
+  document.querySelectorAll('.history-filter-chip').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === historyQuickFilter);
+  });
+  renderHistory();
+});
 
 function escapeHtml(str){
   const d = document.createElement('div');
