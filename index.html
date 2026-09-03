@@ -1815,7 +1815,7 @@ function buildCard(c, now, order){
     </div>
     <div class="tags">
       ${xrayTagHtml}
-      ${(c.caseOwner && c.caseOwnerClientId === clientId) ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
+      ${c.caseOwner ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
       ${c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''}
@@ -1889,7 +1889,7 @@ function buildDeliveringCard(c, now, order){
     <div class="tags">
       <span class="tag ${xrayClass}">${xrayText}</span>
       ${delivererTagHtml}
-      ${(c.caseOwner && c.caseOwnerClientId === clientId) ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
+      ${c.caseOwner ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
       ${c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
@@ -2197,9 +2197,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
     date: dateStr
   };
   if(caseOwnerVal){
-    // ติดแท็กรหัสเครื่องไว้ด้วย เพื่อให้แสดงเจ้าของเคสเฉพาะเครื่องที่กรอกเท่านั้น
     newCaseData.caseOwner = caseOwnerVal;
-    newCaseData.caseOwnerClientId = clientId;
   }
   casesRef.push(newCaseData);
 
