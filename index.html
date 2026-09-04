@@ -1307,16 +1307,39 @@
 <!-- Modal เพิ่มผู้ป่วย Pass ตรงไปวอร์ด (ไม่ผ่านห้องพักฟื้น) -->
 <div class="overlay" id="directPassOverlay">
   <div class="modal">
-    <h2>เพิ่มผู้ป่วย Pass ตรงไปวอร์ด</h2>
+    <h2 id="directPassModalTitle">เพิ่มผู้ป่วย Pass ตรงไปวอร์ด</h2>
     <div class="field">
       <label>วอร์ดปลายทาง (พิมพ์หรือเลือกวอร์ด)</label>
       <input type="text" id="directPassWardInput" list="wardOptionsList" placeholder="พิมพ์ชื่อวอร์ดหรือเลือกจากรายการ..." autocomplete="off">
     </div>
     <div class="field">
+      <label>OR Room</label>
+      <select id="directPassOrRoom">
+        <option value="">-- เลือกห้อง --</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16">16</option>
+        <option value="17">17</option>
+        <option value="18">18</option>
+      </select>
+    </div>
+    <div class="field" id="directPassDelivererFields">
       <label>ผู้ที่ไปส่ง คนที่ 1 (พิมพ์หรือเลือกชื่อ)</label>
       <input type="text" id="directPassDeliverer1" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
     </div>
-    <div class="field">
+    <div class="field" id="directPassDelivererFields2">
       <label>ผู้ที่ไปส่ง คนที่ 2 (พิมพ์หรือเลือกชื่อ)</label>
       <input type="text" id="directPassDeliverer2" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
     </div>
@@ -1376,6 +1399,7 @@ let selectedRespiration = 'Room air';
 let selectedInfection = false;
 let pendingWard = '';
 let editingWaitingFieldsCaseId = null;
+let editingDirectPassCaseId = null;
 let pendingRouteCaseId = null;
 let pendingRouteOriginalCreatedAt = null;
 let pendingRouteOriginalDate = null;
@@ -1876,6 +1900,7 @@ function buildDeliveringCard(c, now, order){
   const xrayClass = c.xray === 'yes' ? 'xray-yes' : 'xray-no';
   const xrayText = c.xray === 'yes' ? 'X-ray' : 'ไม่ X-ray';
   const isGoingDeliver = !!c.isGoingToDeliver;
+  const isDirectPass = !!c.isDirectToWard;
 
   const deliveredBtnHtml = isGoingDeliver
     ? `<button class="action-btn going-btn" data-action="delivered" data-id="${c.id}"><span class="going-time mono">${fmtTimeOnly(c.goingToDeliverAt)}</span><span class="walk-anim">🚶</span> กำลังไปส่ง<span class="going-dots">.</span></button>`
@@ -1885,22 +1910,29 @@ function buildDeliveringCard(c, now, order){
     ? `<span class="tag resp-tag clickable" data-action="edit-deliverer" data-id="${c.id}">👤 ${escapeHtml(c.deliveredBy)} ✎</span>`
     : `<span class="tag xray-no clickable" data-action="edit-deliverer" data-id="${c.id}">+ ระบุผู้ไปส่ง</span>`;
 
+  // ปุ่มย้อนกลับ (เคสปกติ) หรือปุ่มแก้ไขวอร์ด/OR Room (เคส Pass ไม่ผ่าน RR)
+  const secondaryBtnHtml = isDirectPass
+    ? `<button class="action-btn danger-outline" data-action="edit-direct-pass" data-id="${c.id}" title="แก้ไขวอร์ด/OR Room">✎</button>`
+    : `<button class="action-btn danger-outline" data-action="back-to-ready" data-id="${c.id}" title="ย้อนกลับไปพร้อมส่งกลับวอร์ด">↩</button>`;
+
   const card = document.createElement('div');
   card.className = 'card status-delivering' + (isGoingDeliver ? ' status-preop-going' : '');
 
   if(isGoingDeliver){
-    // ระหว่างกำลังไปส่ง: ย่อให้เล็กที่สุด วอร์ด/X-ray/ผู้ไปส่งอยู่บรรทัดเดียวกัน
+    // ระหว่างกำลังไปส่ง: ย่อให้เล็กที่สุด วอร์ด/X-ray/ผู้ไปส่งอยู่บรรทัดเดียวกัน (เคส Pass ตัด X-ray ออก ใส่ OR Room แทน)
     card.classList.add('compact-going');
     card.innerHTML = `
       <div class="order-badge mono">${order}</div>
       <div class="compact-delivery-row">
         <span class="ward-name-compact">${escapeHtml(c.ward)}</span>
-        <span class="tag ${xrayClass}">${xrayText}</span>
+        ${isDirectPass
+          ? (c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : '')
+          : `<span class="tag ${xrayClass}">${xrayText}</span>`}
         ${delivererTagHtml}
       </div>
       <div class="actions">
         ${deliveredBtnHtml}
-        <button class="action-btn danger-outline" data-action="back-to-ready" data-id="${c.id}" title="ย้อนกลับไปพร้อมส่งกลับวอร์ด">↩</button>
+        ${secondaryBtnHtml}
       </div>
     `;
     return card;
@@ -1910,18 +1942,19 @@ function buildDeliveringCard(c, now, order){
     <div class="order-badge mono">${order}</div>
     <div class="card-top">
       <div>
-        <div class="ward-label">วอร์ดปลายทาง</div>
+        ${isDirectPass ? '' : `<div class="ward-label">วอร์ดปลายทาง</div>`}
         <div class="ward-name">${escapeHtml(c.ward)}</div>
-        <div class="date-line mono">${fmtDate(c.date)}</div>
+        ${isDirectPass ? '' : `<div class="date-line mono">${fmtDate(c.date)}</div>`}
       </div>
       <div class="card-right-info">
         <div class="badge delivering">🚑 กำลังนำส่ง</div>
       </div>
     </div>
     <div class="tags">
-      <span class="tag ${xrayClass}">${xrayText}</span>
+      ${isDirectPass ? '' : `<span class="tag ${xrayClass}">${xrayText}</span>`}
       ${delivererTagHtml}
-      ${c.isDirectToWard ? `<span class="tag direct-pass-tag">🟣 Pass ไม่ผ่าน RR</span>` : ''}
+      ${isDirectPass ? `<span class="tag direct-pass-tag">🟣 Pass ไม่ผ่าน RR</span>` : ''}
+      ${c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : ''}
       ${c.caseOwner ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
       ${c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
@@ -1931,7 +1964,7 @@ function buildDeliveringCard(c, now, order){
     ${c.notes ? `<div class="notes">${escapeHtml(c.notes)}</div>` : ''}
     <div class="actions">
       ${deliveredBtnHtml}
-      <button class="action-btn danger-outline" data-action="back-to-ready" data-id="${c.id}" title="ย้อนกลับไปพร้อมส่งกลับวอร์ด">↩</button>
+      ${secondaryBtnHtml}
     </div>
   `;
   return card;
@@ -2124,19 +2157,36 @@ document.getElementById('btnAdd').addEventListener('click', () => {
 });
 
 document.getElementById('btnAddDirectPass').addEventListener('click', () => {
+  editingDirectPassCaseId = null;
+  document.getElementById('directPassModalTitle').textContent = 'เพิ่มผู้ป่วย Pass ตรงไปวอร์ด';
+  document.getElementById('btnDirectPassSave').textContent = 'เพิ่มเข้าคิว';
   document.getElementById('directPassWardInput').value = '';
+  document.getElementById('directPassOrRoom').value = '';
   document.getElementById('directPassDeliverer1').value = '';
   document.getElementById('directPassDeliverer2').value = '';
+  document.getElementById('directPassDelivererFields').style.display = '';
+  document.getElementById('directPassDelivererFields2').style.display = '';
   document.getElementById('directPassOverlay').classList.add('open');
 });
 
 document.getElementById('btnDirectPassCancel').addEventListener('click', () => {
   document.getElementById('directPassOverlay').classList.remove('open');
+  editingDirectPassCaseId = null;
 });
 
 document.getElementById('btnDirectPassSave').addEventListener('click', () => {
   const ward = document.getElementById('directPassWardInput').value.trim();
   if(!ward){ alert('กรุณาระบุวอร์ดปลายทาง'); return; }
+  const orRoom = document.getElementById('directPassOrRoom').value;
+
+  if(editingDirectPassCaseId){
+    // โหมดแก้ไขวอร์ด/OR Room ของเคส Pass ที่มีอยู่แล้ว (ผู้ไปส่งแก้ผ่านแท็กบนการ์ดแยกต่างหาก)
+    casesRef.child(editingDirectPassCaseId).update({ ward, orRoom });
+    document.getElementById('directPassOverlay').classList.remove('open');
+    editingDirectPassCaseId = null;
+    return;
+  }
+
   const d1 = document.getElementById('directPassDeliverer1').value.trim();
   const d2 = document.getElementById('directPassDeliverer2').value.trim();
   if(!d1 || !d2){ alert('กรุณาระบุผู้ไปส่งให้ครบทั้ง 2 ช่อง (เลือก "ไม่มี" ได้ถ้าไปคนเดียว)'); return; }
@@ -2153,6 +2203,7 @@ document.getElementById('btnDirectPassSave').addEventListener('click', () => {
 
   casesRef.push({
     ward,
+    orRoom,
     deliveredBy: combinedName,
     deliveredBy1: d1,
     deliveredBy2: d2,
@@ -2381,6 +2432,17 @@ document.querySelector('.columns').addEventListener('click', (e) => {
     if(confirm('ย้อนกลับไปที่ "พร้อมส่งกลับวอร์ด" ใช่หรือไม่?')){
       casesRef.child(id).update({ status: 'ready', readyAt: Date.now(), isGoingToDeliver: false });
     }
+  } else if(action === 'edit-direct-pass'){
+    const c = cases.find(x => x.id === id);
+    if(!c) return;
+    editingDirectPassCaseId = id;
+    document.getElementById('directPassModalTitle').textContent = 'แก้ไขวอร์ด/OR Room';
+    document.getElementById('btnDirectPassSave').textContent = 'บันทึก';
+    document.getElementById('directPassWardInput').value = c.ward || '';
+    document.getElementById('directPassOrRoom').value = c.orRoom || '';
+    document.getElementById('directPassDelivererFields').style.display = 'none';
+    document.getElementById('directPassDelivererFields2').style.display = 'none';
+    document.getElementById('directPassOverlay').classList.add('open');
   }
 });
 
