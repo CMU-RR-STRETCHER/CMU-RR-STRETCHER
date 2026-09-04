@@ -120,7 +120,7 @@
 
   .columns{
     display:grid;
-    grid-template-columns:repeat(4, 1fr);
+    grid-template-columns:repeat(4, minmax(0, 1fr));
     gap:16px;
     align-items:stretch;
   }
@@ -129,6 +129,7 @@
     flex-direction:column;
     height:calc(100vh - 210px);
     min-height:320px;
+    min-width:0;
   }
   .column-head{
     display:flex;
@@ -224,6 +225,7 @@
     flex-wrap:nowrap;
     gap:8px;
     overflow:hidden;
+    min-width:0;
   }
   .ward-name-compact{
     font-size:15px;
@@ -237,7 +239,11 @@
   }
   .compact-delivery-row .tag,
   .compact-delivery-row .tag.clickable{
-    flex:0 0 auto;
+    flex:0 1 auto;
+    min-width:0;
+    max-width:120px;
+    overflow:hidden;
+    text-overflow:ellipsis;
     white-space:nowrap;
   }
   .card.status-waiting{border-color:var(--waiting);}
