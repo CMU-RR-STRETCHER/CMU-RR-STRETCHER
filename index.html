@@ -167,6 +167,7 @@
   .add-btn-small:hover{filter:brightness(1.08);}
   #btnAddPreop{background:var(--preop);color:#06251A;}
   #btnAdd{background:var(--waiting);color:#2A2000;}
+  #btnAddDirectPass{background:var(--transit);color:#fff;}
   @media(max-width:1100px){
     .card{padding:13px;gap:10px;}
     .ward-name{font-size:16px;}
@@ -362,6 +363,7 @@
   .tag.infection-tag{background:var(--infection-dim);color:var(--infection);border:1px solid rgba(255,159,67,0.4);}
   .tag.vip-tag{background:var(--vip-dim);color:var(--vip);border:1px solid rgba(212,175,55,0.4);}
   .tag.waiting-origin-tag{background:var(--waiting-dim);color:var(--waiting);border:1px solid rgba(255,209,102,0.4);}
+  .tag.direct-pass-tag{background:var(--transit-dim);color:var(--transit);border:1px solid rgba(155,107,255,0.4);}
   .tag.owner-tag{background:var(--preop-dim);color:var(--preop);border:1px solid rgba(46,196,182,0.4);}
 
   .notes{font-size:13px;color:var(--muted);background:var(--surface-2);padding:8px 10px;border-radius:8px;}
@@ -915,6 +917,7 @@
       <div class="column-head">
         <span class="col-dot transit"></span>
         <h2>ส่งผู้ป่วยได้</h2>
+        <button class="add-btn-small" id="btnAddDirectPass">+ เพิ่มผู้ป่วย</button>
         <span class="col-count" id="countDelivering">0</span>
       </div>
       <div class="board" id="boardDelivering"></div>
@@ -1301,6 +1304,29 @@
   </div>
 </div>
 
+<!-- Modal เพิ่มผู้ป่วย Pass ตรงไปวอร์ด (ไม่ผ่านห้องพักฟื้น) -->
+<div class="overlay" id="directPassOverlay">
+  <div class="modal">
+    <h2>เพิ่มผู้ป่วย Pass ตรงไปวอร์ด</h2>
+    <div class="field">
+      <label>วอร์ดปลายทาง (พิมพ์หรือเลือกวอร์ด)</label>
+      <input type="text" id="directPassWardInput" list="wardOptionsList" placeholder="พิมพ์ชื่อวอร์ดหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>ผู้ที่ไปส่ง คนที่ 1 (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="directPassDeliverer1" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>ผู้ที่ไปส่ง คนที่ 2 (พิมพ์หรือเลือกชื่อ)</label>
+      <input type="text" id="directPassDeliverer2" list="delivererOptionsList" placeholder="พิมพ์ชื่อหรือเลือกจากรายการ..." autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn danger-outline" id="btnDirectPassCancel" style="flex:1;">ยกเลิก</button>
+      <button class="action-btn primary" id="btnDirectPassSave" style="flex:1;">เพิ่มเข้าคิว</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="pinOverlay">
   <div class="modal pin-modal">
     <h2 id="pinTitle">ใส่รหัสผ่าน</h2>
@@ -1596,7 +1622,7 @@ casesRef.on('value', (snapshot) => {
 
     let hasNewSentOutFromOther = false;
     deliveringCasesNow.forEach(c => {
-      if(!knownDeliveringIds.has(c.id) && c.sentOutByClient !== clientId){
+      if(!c.isDirectToWard && !knownDeliveringIds.has(c.id) && c.sentOutByClient !== clientId){
         hasNewSentOutFromOther = true;
       }
     });
@@ -1895,6 +1921,7 @@ function buildDeliveringCard(c, now, order){
     <div class="tags">
       <span class="tag ${xrayClass}">${xrayText}</span>
       ${delivererTagHtml}
+      ${c.isDirectToWard ? `<span class="tag direct-pass-tag">🟣 Pass ไม่ผ่าน RR</span>` : ''}
       ${c.caseOwner ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
       ${c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
@@ -2094,6 +2121,49 @@ document.getElementById('btnAdd').addEventListener('click', () => {
   document.getElementById('caseOwnerField').style.display = '';
   setTimeInRRValue(nowHHMM());
   document.getElementById('overlay').classList.add('open');
+});
+
+document.getElementById('btnAddDirectPass').addEventListener('click', () => {
+  document.getElementById('directPassWardInput').value = '';
+  document.getElementById('directPassDeliverer1').value = '';
+  document.getElementById('directPassDeliverer2').value = '';
+  document.getElementById('directPassOverlay').classList.add('open');
+});
+
+document.getElementById('btnDirectPassCancel').addEventListener('click', () => {
+  document.getElementById('directPassOverlay').classList.remove('open');
+});
+
+document.getElementById('btnDirectPassSave').addEventListener('click', () => {
+  const ward = document.getElementById('directPassWardInput').value.trim();
+  if(!ward){ alert('กรุณาระบุวอร์ดปลายทาง'); return; }
+  const d1 = document.getElementById('directPassDeliverer1').value.trim();
+  const d2 = document.getElementById('directPassDeliverer2').value.trim();
+  if(!d1 || !d2){ alert('กรุณาระบุผู้ไปส่งให้ครบทั้ง 2 ช่อง (เลือก "ไม่มี" ได้ถ้าไปคนเดียว)'); return; }
+  if(d1 === 'ไม่มี' && d2 === 'ไม่มี'){ alert('กรุณาระบุผู้ไปส่งอย่างน้อย 1 คน'); return; }
+
+  let combinedName;
+  if(d2 === 'ไม่มี') combinedName = d1;
+  else if(d1 === 'ไม่มี') combinedName = d2;
+  else combinedName = `${d1} + ${d2}`;
+
+  const now = Date.now();
+  const d = new Date(now);
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+  casesRef.push({
+    ward,
+    deliveredBy: combinedName,
+    deliveredBy1: d1,
+    deliveredBy2: d2,
+    status: 'delivering',
+    deliveringAt: now,
+    createdAt: now,
+    date: dateStr,
+    isDirectToWard: true
+  });
+
+  document.getElementById('directPassOverlay').classList.remove('open');
 });
 
 document.getElementById('btnAddPreop').addEventListener('click', () => {
