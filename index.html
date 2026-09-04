@@ -2189,13 +2189,19 @@ document.getElementById('btnDirectPassSave').addEventListener('click', () => {
 
   const d1 = document.getElementById('directPassDeliverer1').value.trim();
   const d2 = document.getElementById('directPassDeliverer2').value.trim();
-  if(!d1 || !d2){ alert('กรุณาระบุผู้ไปส่งให้ครบทั้ง 2 ช่อง (เลือก "ไม่มี" ได้ถ้าไปคนเดียว)'); return; }
-  if(d1 === 'ไม่มี' && d2 === 'ไม่มี'){ alert('กรุณาระบุผู้ไปส่งอย่างน้อย 1 คน'); return; }
 
-  let combinedName;
-  if(d2 === 'ไม่มี') combinedName = d1;
-  else if(d1 === 'ไม่มี') combinedName = d2;
-  else combinedName = `${d1} + ${d2}`;
+  // ผู้ไปส่งไม่บังคับกรอกตอนนี้ ปล่อยว่างไว้ได้ ค่อยกดแก้ไขทีหลังผ่านแท็กบนการ์ด
+  let combinedName = '';
+  if(d1 && d2){
+    if(d1 === 'ไม่มี' && d2 === 'ไม่มี') combinedName = '';
+    else if(d2 === 'ไม่มี') combinedName = d1;
+    else if(d1 === 'ไม่มี') combinedName = d2;
+    else combinedName = `${d1} + ${d2}`;
+  } else if(d1){
+    combinedName = d1;
+  } else if(d2){
+    combinedName = d2;
+  }
 
   const now = Date.now();
   const d = new Date(now);
