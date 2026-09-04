@@ -1947,13 +1947,13 @@ function buildDeliveringCard(c, now, order){
         ${isDirectPass ? '' : `<div class="date-line mono">${fmtDate(c.date)}</div>`}
       </div>
       <div class="card-right-info">
-        <div class="badge delivering">🚑 กำลังนำส่ง</div>
+        ${isDirectPass ? '' : `<div class="badge delivering">🚑 กำลังนำส่ง</div>`}
       </div>
     </div>
     <div class="tags">
       ${isDirectPass ? '' : `<span class="tag ${xrayClass}">${xrayText}</span>`}
       ${delivererTagHtml}
-      ${isDirectPass ? `<span class="tag direct-pass-tag">🟣 Pass ไม่ผ่าน RR</span>` : ''}
+      ${isDirectPass ? `<span class="tag direct-pass-tag">🟣 Case Pass</span>` : ''}
       ${c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : ''}
       ${c.caseOwner ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
       ${c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : ''}
