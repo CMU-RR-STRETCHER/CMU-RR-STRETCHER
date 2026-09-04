@@ -255,6 +255,11 @@
     box-shadow:0 0 10px rgba(255,184,77,0.3);
   }
   .card.status-delivering{border-color:var(--transit);}
+  .card.status-direct-pass{
+    background:var(--transit-dim);
+    border-color:var(--transit);
+    box-shadow:0 0 10px rgba(155,107,255,0.35);
+  }
   .card.status-vip{
     border-color:var(--vip);
     box-shadow:0 0 10px rgba(212,175,55,0.25);
@@ -1916,7 +1921,7 @@ function buildDeliveringCard(c, now, order){
     : `<button class="action-btn danger-outline" data-action="back-to-ready" data-id="${c.id}" title="ย้อนกลับไปพร้อมส่งกลับวอร์ด">↩</button>`;
 
   const card = document.createElement('div');
-  card.className = 'card status-delivering' + (isGoingDeliver ? ' status-preop-going' : '');
+  card.className = 'card status-delivering' + (isGoingDeliver ? ' status-preop-going' : '') + (isDirectPass ? ' status-direct-pass' : '');
 
   if(isGoingDeliver){
     // ระหว่างกำลังไปส่ง: ย่อให้เล็กที่สุด วอร์ด/X-ray/ผู้ไปส่งอยู่บรรทัดเดียวกัน (เคส Pass ตัด X-ray ออก ใส่ OR Room แทน)
