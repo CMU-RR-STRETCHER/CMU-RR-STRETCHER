@@ -1953,7 +1953,7 @@ function buildDeliveringCard(c, now, order){
       </div>
       <div class="actions">
         ${deliveredBtnHtml}
-        ${secondaryBtnHtml}
+        ${isDirectPass ? '' : secondaryBtnHtml}
       </div>
     `;
     return card;
