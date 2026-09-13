@@ -588,6 +588,7 @@
   .history-row:last-child{margin-bottom:0;}
   .history-row-main{display:flex;flex-direction:column;gap:4px;min-width:160px;}
   .history-ward{color:var(--text);font-weight:700;font-size:13px;}
+  .history-owner-inline{color:var(--preop);font-weight:600;font-size:12px;}
   .history-row-taggroups{display:flex;flex-direction:column;gap:4px;}
   .history-tag-row{display:flex;flex-wrap:wrap;gap:4px;}
   .history-tag-row .tag{font-size:10px;padding:3px 8px;}
@@ -2026,53 +2027,36 @@ function caseWaitDuration(c){
 
 function buildHistoryRowHtml(c){
   const duration = caseWaitDuration(c);
-  let respDisplay = '';
-  if (c.respiration && c.respiration !== 'Room air') {
-    respDisplay = c.respiration;
-    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece', 'Collar mask'].includes(c.respiration)) {
-      respDisplay += ` (${c.o2Lpm} LPM)`;
-    }
+  const isPreopCase = c.status === 'preop-picked';
+
+  if(!isPreopCase){
+    // ประวัติ RR: วอร์ด + เจ้าของเคส และเวลา 3 จุด (Time in RR / เวลาพักฟื้น / รอที่พร้อมส่งกลับวอร์ด) เท่านั้น
+    const recoveryDuration = c.readyAt ? Math.max(0, c.readyAt - timeInRRTimestamp(c)) : null;
+    const readyWaitDuration = (c.readyAt && c.deliveringAt) ? Math.max(0, c.deliveringAt - c.readyAt) : null;
+    return `
+      <div class="history-row">
+        <div class="history-row-main">
+          <span class="history-ward">${escapeHtml(c.ward)}</span>
+          ${c.caseOwner ? `<span class="history-owner-inline">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
+        </div>
+        <div class="history-row-times mono">
+          <span>Time in RR ${c.timeInRR ? c.timeInRR + ' น.' : '-'}</span>
+          <span>เวลาพักฟื้น ${recoveryDuration !== null ? elapsed(recoveryDuration) : '-'}</span>
+          <span>รอที่พร้อมส่งกลับวอร์ด ${readyWaitDuration !== null ? elapsed(readyWaitDuration) : '-'}</span>
+        </div>
+      </div>`;
   }
 
-  // รวมทุกแท็กไว้แถวเดียวกันหมด (ไม่ต้องมีป้าย Pre-op ซ้ำ เพราะแยกแท็บไว้ชัดเจนแล้ว)
-  const otherTags = [
-    c.isFastTrack ? `<span class="tag fasttrack-hist-tag">⚡ Fast Track</span>` : '',
-    c.isVIP ? `<span class="tag vip-tag">⭐</span>` : '',
-    c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 มาจาก Waiting Area</span>` : '',
-    respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : '',
-    c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : '',
-    c.deliveredBy ? `<span class="tag resp-tag">🚑 ${escapeHtml(c.deliveredBy)}</span>` : '',
-    c.receivedBy ? `<span class="tag resp-tag">👤 ${escapeHtml(c.receivedBy)}</span>` : '',
-    c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : '',
-    c.isBlock ? `<span class="tag infection-tag">💉 Block</span>` : ''
-  ].filter(Boolean).join('');
-
-  // ประวัติ RR แสดงไทม์ไลน์ละเอียด: Time in RR -> ระยะเวลาพักฟื้น -> กำลังไปส่ง -> รอ
-  // ส่วนประวัติ Pre-op ยังใช้แบบเดิม (เข้า RR / ส่งออก / รอ) เพราะฟิลด์เวลาต่างชุดกัน
-  const isPreopCase = c.status === 'preop-picked';
-  // ระยะเวลาที่อยู่ในสถานะ "กำลังพักฟื้น" จริงๆ นับจาก Time in RR จนถึงตอนกลายเป็น "พร้อมส่งกลับวอร์ด"
-  const recoveryDuration = c.readyAt ? Math.max(0, c.readyAt - timeInRRTimestamp(c)) : null;
-  const timesHtml = isPreopCase
-    ? `
-      <span>เข้า RR ${fmtTimeOnly(c.createdAt)}</span>
-      <span>ส่งออก ${fmtTimeOnly(c.pickedAt)}</span>
-      <span class="history-duration">รอ ${elapsed(duration)}</span>
-    `
-    : `
-      <span>Time in RR ${c.timeInRR ? c.timeInRR + ' น.' : '-'}</span>
-      <span>เวลาพักฟื้น ${recoveryDuration !== null ? elapsed(recoveryDuration) : '-'}</span>
-      <span>กำลังไปส่ง ${c.goingToDeliverAt ? fmtTimeOnly(c.goingToDeliverAt) : '-'}</span>
-      <span class="history-duration">รอ ${elapsed(duration)}</span>
-    `;
-
+  // ประวัติ Pre-op ยังใช้แบบเดิม (เข้า RR / ส่งออก / รอ)
   return `
     <div class="history-row">
       <div class="history-row-main">
         <span class="history-ward">${escapeHtml(c.ward)}</span>
-        ${otherTags ? `<div class="history-tag-row">${otherTags}</div>` : ''}
       </div>
       <div class="history-row-times mono">
-        ${timesHtml}
+        <span>เข้า RR ${fmtTimeOnly(c.createdAt)}</span>
+        <span>ส่งออก ${fmtTimeOnly(c.pickedAt)}</span>
+        <span class="history-duration">รอ ${elapsed(duration)}</span>
       </div>
     </div>`;
 }
@@ -2082,6 +2066,14 @@ function renderHistory(){
   const query = (searchInput.value || '').trim().toLowerCase();
 
   let hist = cases.filter(c => historyActiveTab === 'preop' ? c.status === 'preop-picked' : c.status === 'picked');
+
+  // แท็บ RR: โชว์แค่ของ "วันนี้" เท่านั้น (ข้อมูลเก่ายังเก็บไว้ใน Firebase ตามปกติ แค่ไม่แสดงผ่านแท็บนี้)
+  const td = new Date();
+  const todayStr = td.getFullYear() + '-' + String(td.getMonth()+1).padStart(2,'0') + '-' + String(td.getDate()).padStart(2,'0');
+  if(historyActiveTab !== 'preop'){
+    hist = hist.filter(c => (c.date || '') === todayStr);
+  }
+
   if(query){
     hist = hist.filter(c => (c.ward || '').toLowerCase().includes(query));
   }
@@ -2095,7 +2087,7 @@ function renderHistory(){
 
   if(hist.length === 0){
     summaryEl.innerHTML = '';
-    groupsEl.innerHTML = `<div class="history-empty">${query ? 'ไม่พบวอร์ดที่ค้นหา' : (historyActiveTab === 'preop' ? 'ยังไม่มีประวัติ Pre-op' : 'ยังไม่มีประวัติ RR')}</div>`;
+    groupsEl.innerHTML = `<div class="history-empty">${query ? 'ไม่พบวอร์ดที่ค้นหา' : (historyActiveTab === 'preop' ? 'ยังไม่มีประวัติ Pre-op' : 'วันนี้ยังไม่มีประวัติ RR')}</div>`;
     return;
   }
 
@@ -2107,7 +2099,33 @@ function renderHistory(){
     <div class="summary-chip">เฉลี่ยรอ <b>${elapsed(avgDuration)}</b></div>
   `;
 
-  // จัดกลุ่มตามวันที่ (ใหม่ไปเก่า)
+  const shiftOrder = ['☀️ เวรเช้า','⛅ เวรบ่าย','🌙 เวรดึก'];
+
+  if(historyActiveTab !== 'preop'){
+    // แท็บ RR: มีแค่วันนี้วันเดียวอยู่แล้ว ไม่ต้องมีหัวข้อวันที่/พับกาง จัดกลุ่มแค่ตามเวรพอ
+    const byShift = {};
+    hist.forEach(c => {
+      const shift = getShiftName(c.pickedAt);
+      if(!byShift[shift]) byShift[shift] = [];
+      byShift[shift].push(c);
+    });
+
+    groupsEl.innerHTML = shiftOrder.filter(s => byShift[s]).map(shift => {
+      const rows = byShift[shift];
+      const shiftAvg = rows.reduce((s,c) => s + caseWaitDuration(c), 0) / rows.length;
+      return `
+        <div class="history-shift-group">
+          <div class="history-shift-head">
+            <span>${shift}</span>
+            <span class="shift-count">${rows.length} คน · เฉลี่ยรอ ${elapsed(shiftAvg)}</span>
+          </div>
+          ${rows.map(c => buildHistoryRowHtml(c)).join('')}
+        </div>`;
+    }).join('');
+    return;
+  }
+
+  // จัดกลุ่มตามวันที่ (ใหม่ไปเก่า) -- ใช้เฉพาะแท็บ Pre-op เท่านั้น
   const byDate = {};
   hist.forEach(c => {
     const key = c.date || '-';
@@ -2115,12 +2133,9 @@ function renderHistory(){
     byDate[key].push(c);
   });
   const dateKeys = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
-  const shiftOrder = ['☀️ เวรเช้า','⛅ เวรบ่าย','🌙 เวรดึก'];
 
   // ค่าเริ่มต้น: กางแค่ "วันนี้" ไว้ ส่วนวันอื่นพับไว้ก่อน (ตั้งครั้งแรกเท่านั้น ไม่รีเซ็ตทุกครั้งที่ข้อมูลอัปเดต)
   if(historyExpandedDates === null){
-    const td = new Date();
-    const todayStr = td.getFullYear() + '-' + String(td.getMonth()+1).padStart(2,'0') + '-' + String(td.getDate()).padStart(2,'0');
     historyExpandedDates = new Set([todayStr]);
   }
 
