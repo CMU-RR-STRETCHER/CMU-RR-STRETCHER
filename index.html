@@ -2502,13 +2502,19 @@ document.getElementById('btnDelivererCancel').addEventListener('click', () => {
 document.getElementById('btnDelivererConfirm').addEventListener('click', () => {
   const deliverer1 = document.getElementById('delivererInput1').value.trim();
   const deliverer2 = document.getElementById('delivererInput2').value.trim();
-  if(!deliverer1 || !deliverer2){ alert('กรุณาระบุผู้ไปส่งให้ครบทั้ง 2 ช่อง (เลือก "ไม่มี" ได้ถ้าไปคนเดียว)'); return; }
-  if(deliverer1 === 'ไม่มี' && deliverer2 === 'ไม่มี'){ alert('กรุณาระบุผู้ไปส่งอย่างน้อย 1 คน'); return; }
 
-  let combinedName;
-  if(deliverer2 === 'ไม่มี') combinedName = deliverer1;
-  else if(deliverer1 === 'ไม่มี') combinedName = deliverer2;
-  else combinedName = `${deliverer1} + ${deliverer2}`;
+  // ผู้ไปส่งไม่บังคับกรอกตอนนี้ ปล่อยว่างไว้ได้ ค่อยกดแก้ไขทีหลังผ่านแท็กบนการ์ด
+  let combinedName = '';
+  if(deliverer1 && deliverer2){
+    if(deliverer1 === 'ไม่มี' && deliverer2 === 'ไม่มี') combinedName = '';
+    else if(deliverer2 === 'ไม่มี') combinedName = deliverer1;
+    else if(deliverer1 === 'ไม่มี') combinedName = deliverer2;
+    else combinedName = `${deliverer1} + ${deliverer2}`;
+  } else if(deliverer1){
+    combinedName = deliverer1;
+  } else if(deliverer2){
+    combinedName = deliverer2;
+  }
 
   if(pendingDeliverCaseId){
     if(pendingDeliverMode === 'ready'){
