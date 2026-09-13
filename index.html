@@ -1210,6 +1210,7 @@
         <div class="resp-opt" data-val="Cannula">Cannula</div>
         <div class="resp-opt" data-val="Mask c bag">Mask c bag</div>
         <div class="resp-opt" data-val="T-piece">T-piece</div>
+        <div class="resp-opt" data-val="Collar mask" style="grid-column: span 2;">Collar mask</div>
         <div class="resp-opt" data-val="Ventilator" style="grid-column: span 2;">Ventilator</div>
       </div>
       <!-- ส่วนเลือกจำนวน O2 LPM -->
@@ -1261,7 +1262,7 @@
         <span>➔</span>
       </button>
       <button class="choice-btn to-vip" id="btnGoVIP">
-        <span>👑 VIP</span>
+        <span>⭐ VIP</span>
         <span>➔</span>
       </button>
     </div>
@@ -1861,7 +1862,7 @@ function buildCard(c, now, order){
   } else if(isCaution){
     badgeClass = 'waiting'; badgeText = '⚠ รอนาน';
   } else if(isVIP && isReady){
-    badgeClass = 'vip'; badgeText = '👑 VIP';
+    badgeClass = 'vip'; badgeText = '⭐ VIP';
   } else if(isReady){
     badgeClass = 'ready'; badgeText = 'พร้อมส่งกลับ';
   }
@@ -1884,7 +1885,7 @@ function buildCard(c, now, order){
   let respDisplay = '';
   if (c.respiration && c.respiration !== 'Room air') {
     respDisplay = c.respiration;
-    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece'].includes(c.respiration)) {
+    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece', 'Collar mask'].includes(c.respiration)) {
       respDisplay += ` (${c.o2Lpm} LPM)`;
     }
   }
@@ -1930,7 +1931,7 @@ function buildDeliveringCard(c, now, order){
   let respDisplay = '';
   if (c.respiration && c.respiration !== 'Room air') {
     respDisplay = c.respiration;
-    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece'].includes(c.respiration)) {
+    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece', 'Collar mask'].includes(c.respiration)) {
       respDisplay += ` (${c.o2Lpm} LPM)`;
     }
   }
@@ -1994,7 +1995,7 @@ function buildDeliveringCard(c, now, order){
       ${isDirectPass ? `<span class="tag direct-pass-tag">🟣 Case Pass</span>` : ''}
       ${c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : ''}
       ${c.caseOwner ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
-      ${c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : ''}
+      ${c.isVIP ? `<span class="tag vip-tag">⭐ VIP</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
       ${c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''}
@@ -2021,7 +2022,7 @@ function buildHistoryRowHtml(c){
   let respDisplay = '';
   if (c.respiration && c.respiration !== 'Room air') {
     respDisplay = c.respiration;
-    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece'].includes(c.respiration)) {
+    if (c.o2Lpm && ['Cannula', 'Mask c bag', 'T-piece', 'Collar mask'].includes(c.respiration)) {
       respDisplay += ` (${c.o2Lpm} LPM)`;
     }
   }
@@ -2029,7 +2030,7 @@ function buildHistoryRowHtml(c){
   // รวมทุกแท็กไว้แถวเดียวกันหมด (ไม่ต้องมีป้าย Pre-op ซ้ำ เพราะแยกแท็บไว้ชัดเจนแล้ว)
   const otherTags = [
     c.isFastTrack ? `<span class="tag fasttrack-hist-tag">⚡ Fast Track</span>` : '',
-    c.isVIP ? `<span class="tag vip-tag">👑 VIP</span>` : '',
+    c.isVIP ? `<span class="tag vip-tag">⭐ VIP</span>` : '',
     c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 มาจาก Waiting Area</span>` : '',
     respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : '',
     c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : '',
@@ -2447,7 +2448,7 @@ document.querySelector('.columns').addEventListener('click', (e) => {
       document.querySelectorAll('.resp-opt').forEach(opt => {
         opt.classList.toggle('active', opt.dataset.val === selectedRespiration);
       });
-      const showO2 = ['Cannula', 'Mask c bag', 'T-piece'].includes(selectedRespiration);
+      const showO2 = ['Cannula', 'Mask c bag', 'T-piece', 'Collar mask'].includes(selectedRespiration);
       document.getElementById('o2FlowBox').style.display = showO2 ? 'flex' : 'none';
       if(c.o2Lpm){ o2LpmSelect.value = String(c.o2Lpm); }
 
@@ -2585,7 +2586,7 @@ document.querySelectorAll('.resp-opt').forEach(opt => {
     document.querySelectorAll('.resp-opt').forEach(o => o.classList.remove('active'));
     opt.classList.add('active');
     selectedRespiration = opt.dataset.val;
-    const showO2 = ['Cannula', 'Mask c bag', 'T-piece'].includes(selectedRespiration);
+    const showO2 = ['Cannula', 'Mask c bag', 'T-piece', 'Collar mask'].includes(selectedRespiration);
     document.getElementById('o2FlowBox').style.display = showO2 ? 'flex' : 'none';
   });
 });
