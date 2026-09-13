@@ -220,6 +220,18 @@
     padding:10px 12px;
     gap:8px;
   }
+  .going-ward-name{
+    font-size:16px;
+    font-weight:700;
+    color:var(--text);
+    line-height:1.3;
+    word-break:break-word;
+  }
+  .going-info-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
   .compact-delivery-row{
     display:flex;
     align-items:center;
@@ -1928,16 +1940,16 @@ function buildDeliveringCard(c, now, order){
   card.className = 'card status-delivering' + (isGoingDeliver ? ' status-preop-going' : '') + (isDirectPass ? ' status-direct-pass' : '');
 
   if(isGoingDeliver){
-    // ระหว่างกำลังไปส่ง: ย่อให้เล็กที่สุด วอร์ด/X-ray/ผู้ไปส่งอยู่บรรทัดเดียวกัน (เคส Pass ตัด X-ray ออก ใส่ OR Room แทน)
+    // ระหว่างกำลังไปส่ง: บรรทัดแรกชื่อวอร์ดเต็ม บรรทัดสอง X-ray/OR Room + ผู้ไปส่ง (แสดงเฉยๆ ไม่มีไอคอนแก้ไข)
     card.classList.add('compact-going');
     card.innerHTML = `
       <div class="order-badge mono">${order}</div>
-      <div class="compact-delivery-row">
-        <span class="ward-name-compact">${escapeHtml(c.ward)}</span>
+      <div class="going-ward-name">${escapeHtml(c.ward)}</div>
+      <div class="going-info-row">
         ${isDirectPass
           ? (c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : '')
           : `<span class="tag ${xrayClass}">${xrayText}</span>`}
-        ${delivererTagHtml}
+        <span class="tag resp-tag">👤 ${escapeHtml(c.deliveredBy || '-')}</span>
       </div>
       <div class="actions">
         ${deliveredBtnHtml}
