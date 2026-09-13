@@ -1604,6 +1604,13 @@ document.getElementById('btnRRNow').addEventListener('click', () => {
   setTimeInRRValue(nowHHMM());
 });
 
+// กดเข้าช่องชั่วโมง/นาที ให้ไฮไลต์ตัวเลขเดิมทันที พิมพ์ทับได้เลยไม่ต้องกดลบก่อน
+['inputRRHour', 'inputRRMinute'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('focus', function(){ this.select(); });
+  el.addEventListener('click', function(){ this.select(); });
+});
+
 function shiftNameForMinutes(totalMinutes){
   if (totalMinutes >= 480 && totalMinutes <= 960) {
     return '☀️ เวรเช้า';
