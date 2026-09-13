@@ -1262,7 +1262,7 @@
         <span>➔</span>
       </button>
       <button class="choice-btn to-vip" id="btnGoVIP">
-        <span>⭐ VIP</span>
+        <span>⭐</span>
         <span>➔</span>
       </button>
     </div>
@@ -1862,7 +1862,7 @@ function buildCard(c, now, order){
   } else if(isCaution){
     badgeClass = 'waiting'; badgeText = '⚠ รอนาน';
   } else if(isVIP && isReady){
-    badgeClass = 'vip'; badgeText = '⭐ VIP';
+    badgeClass = 'vip'; badgeText = '⭐';
   } else if(isReady){
     badgeClass = 'ready'; badgeText = 'พร้อมส่งกลับ';
   }
@@ -1995,7 +1995,7 @@ function buildDeliveringCard(c, now, order){
       ${isDirectPass ? `<span class="tag direct-pass-tag">🟣 Case Pass</span>` : ''}
       ${c.orRoom ? `<span class="tag xray-yes">🏥 OR ${escapeHtml(c.orRoom)}</span>` : ''}
       ${c.caseOwner ? `<span class="tag owner-tag">🗂 ${escapeHtml(c.caseOwner)}</span>` : ''}
-      ${c.isVIP ? `<span class="tag vip-tag">⭐ VIP</span>` : ''}
+      ${c.isVIP ? `<span class="tag vip-tag">⭐</span>` : ''}
       ${c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 ผู้ป่วยอยู่ใน Waiting Area</span>` : ''}
       ${respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : ''}
       ${c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : ''}
@@ -2030,7 +2030,7 @@ function buildHistoryRowHtml(c){
   // รวมทุกแท็กไว้แถวเดียวกันหมด (ไม่ต้องมีป้าย Pre-op ซ้ำ เพราะแยกแท็บไว้ชัดเจนแล้ว)
   const otherTags = [
     c.isFastTrack ? `<span class="tag fasttrack-hist-tag">⚡ Fast Track</span>` : '',
-    c.isVIP ? `<span class="tag vip-tag">⭐ VIP</span>` : '',
+    c.isVIP ? `<span class="tag vip-tag">⭐</span>` : '',
     c.wasInWaitingArea ? `<span class="tag waiting-origin-tag">🟡 มาจาก Waiting Area</span>` : '',
     respDisplay ? `<span class="tag resp-tag">🫁 ${escapeHtml(respDisplay)}</span>` : '',
     c.isInfection ? `<span class="tag infection-tag">🦠 CRE/VRE</span>` : '',
