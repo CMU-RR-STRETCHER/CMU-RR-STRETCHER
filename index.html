@@ -511,6 +511,20 @@
     font-family:inherit;
     font-size:13px;
   }
+  .history-date-picker{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:9px;
+    padding:9px 12px;
+    font-family:inherit;
+    font-size:13px;
+    font-weight:700;
+  }
+  .history-date-picker::-webkit-calendar-picker-indicator{
+    filter:invert(1);
+    cursor:pointer;
+  }
   .history-toolbar-actions{display:flex;gap:8px;}
   .history-tool-btn{
     background:var(--surface-2);
@@ -966,6 +980,7 @@
       <button class="history-subtab" data-tab="preop">ประวัติ Pre-op</button>
     </div>
     <div class="history-toolbar">
+      <input type="date" id="historyDatePicker" class="history-date-picker">
       <input type="text" id="historySearch" class="history-search" placeholder="ค้นหาวอร์ด...">
       <div class="history-toolbar-actions">
         <button class="history-tool-btn" id="btnExportCsv">⬇ Export CSV</button>
@@ -2019,6 +2034,7 @@ function buildDeliveringCard(c, now, order){
 
 let currentHistoryFiltered = [];
 let historyActiveTab = 'rr'; // 'rr' | 'preop'
+let historySelectedDate = null; // วันที่ที่เลือกดูในแท็บ RR (YYYY-MM-DD) — null = ยังไม่ init จะตั้งเป็นวันนี้ตอน render ครั้งแรก
 let historyExpandedDates = null; // Set ของ dateKey ที่กางอยู่ (null = ยังไม่ init จะตั้งเป็น "วันนี้" ตอน render ครั้งแรก)
 
 function caseWaitDuration(c){
@@ -2067,11 +2083,18 @@ function renderHistory(){
 
   let hist = cases.filter(c => historyActiveTab === 'preop' ? c.status === 'preop-picked' : c.status === 'picked');
 
-  // แท็บ RR: โชว์แค่ของ "วันนี้" เท่านั้น (ข้อมูลเก่ายังเก็บไว้ใน Firebase ตามปกติ แค่ไม่แสดงผ่านแท็บนี้)
   const td = new Date();
   const todayStr = td.getFullYear() + '-' + String(td.getMonth()+1).padStart(2,'0') + '-' + String(td.getDate()).padStart(2,'0');
+  const datePickerEl = document.getElementById('historyDatePicker');
+
+  // แท็บ RR: กรองตามวันที่ที่เลือกจาก date picker (ค่าเริ่มต้น = วันนี้) ข้อมูลเก่ายังเก็บไว้ใน Firebase ตามปกติ ดูย้อนหลังได้ผ่านตัวเลือกวันที่นี้
   if(historyActiveTab !== 'preop'){
-    hist = hist.filter(c => (c.date || '') === todayStr);
+    if(historySelectedDate === null) historySelectedDate = todayStr;
+    datePickerEl.style.display = '';
+    if(datePickerEl.value !== historySelectedDate) datePickerEl.value = historySelectedDate;
+    hist = hist.filter(c => (c.date || '') === historySelectedDate);
+  } else {
+    datePickerEl.style.display = 'none';
   }
 
   if(query){
@@ -2087,7 +2110,7 @@ function renderHistory(){
 
   if(hist.length === 0){
     summaryEl.innerHTML = '';
-    groupsEl.innerHTML = `<div class="history-empty">${query ? 'ไม่พบวอร์ดที่ค้นหา' : (historyActiveTab === 'preop' ? 'ยังไม่มีประวัติ Pre-op' : 'วันนี้ยังไม่มีประวัติ RR')}</div>`;
+    groupsEl.innerHTML = `<div class="history-empty">${query ? 'ไม่พบวอร์ดที่ค้นหา' : (historyActiveTab === 'preop' ? 'ยังไม่มีประวัติ Pre-op' : `ไม่มีประวัติ RR ของวันที่ ${fmtDate(historySelectedDate)}`)}</div>`;
     return;
   }
 
@@ -2196,6 +2219,13 @@ document.getElementById('historySubtabs').addEventListener('click', (e) => {
     b.classList.toggle('active', b.dataset.tab === historyActiveTab);
   });
   renderHistory();
+});
+
+document.getElementById('historyDatePicker').addEventListener('change', (e) => {
+  if(e.target.value){
+    historySelectedDate = e.target.value;
+    renderHistory();
+  }
 });
 
 function escapeHtml(str){
