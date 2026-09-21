@@ -1535,6 +1535,8 @@ const sentOutPlayer = makeAudioPlayer(RORO_SOUND_SRC, 3);
 
 function unlockAudio(){
   [...readyPlayer.pool, ...sentOutPlayer.pool].forEach(a => {
+    // ข้ามตัวที่กำลังเล่นเสียงแจ้งเตือนจริงอยู่ ไม่ให้ถูกตัดเสียงทุกครั้งที่มีการกดอะไรก็ตามบนหน้าเว็บ
+    if(!a.paused && !a.ended) return;
     a.muted = true; // ปิดเสียงไว้ตอนปลดล็อก กันไม่ให้มีเสียงแว้บทุกครั้งที่แตะจอ
     a.play().then(() => {
       a.pause();
