@@ -926,6 +926,28 @@
     .resp-grid{grid-template-columns:1fr;}
     .mascot-img{height:34px;}
   }
+
+  /* เป็ดเดินเพ่นพ่านตามขอบล่างจอ */
+  .wander-duck-wrap{
+    position:fixed;
+    bottom:6px;
+    left:0;
+    width:50px;
+    height:42px;
+    z-index:40; /* อยู่เหนือเนื้อหาปกติ แต่ต่ำกว่า modal (z-index:50) จะได้ไม่ไปบังตอนมี popup */
+    pointer-events:none; /* คลิกทะลุได้เสมอ ไม่ว่าเป็ดจะอยู่ตรงไหนก็ไม่บล็อกการกดปุ่มใดๆ */
+    visibility:hidden; /* ซ่อนไว้เป็นค่าเริ่มต้น กันโชว์แว้บก่อน JS ตั้งเวลาโผล่เข้าจอ */
+    transition-property:left;
+    transition-timing-function:linear;
+  }
+  .wander-duck-wrap.facing-left{transform:scaleX(-1);}
+  .wander-duck{width:100%;height:100%;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));}
+  .duck-leg-l{transform-origin:26.5px 36px;animation:duckLegL 0.5s ease-in-out infinite;}
+  .duck-leg-r{transform-origin:34.5px 36px;animation:duckLegR 0.5s ease-in-out infinite;}
+  @keyframes duckLegL{0%,100%{transform:rotate(18deg);}50%{transform:rotate(-18deg);}}
+  @keyframes duckLegR{0%,100%{transform:rotate(-18deg);}50%{transform:rotate(18deg);}}
+  .duck-wing{transform-origin:22px 28px;animation:duckWing 0.6s ease-in-out infinite;}
+  @keyframes duckWing{0%,100%{transform:rotate(0deg);}50%{transform:rotate(-8deg);}}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
@@ -1428,6 +1450,7 @@
       <li>แก้บั๊กเสียงแจ้งเตือนถูกตัด</li>
       <li>จัดการ์ดคอลัมน์ "กำลังพักฟื้น" และ "พร้อมส่งกลับวอร์ด" ใหม่</li>
       <li>แก้ไขและเพิ่มเติมรายชื่อผู้ไปรับ/ผู้ไปส่ง</li>
+      <li>เป็ดก๊าบๆ 🦆</li>
     </ul>
     <div class="modal-actions">
       <button class="action-btn primary" id="btnCloseWhatsNew" style="flex:1;">ปิด</button>
@@ -2906,6 +2929,100 @@ document.getElementById('btnExportCsv').addEventListener('click', () => {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 });
+</script>
+
+<!-- เป็ดเดินเพ่นพ่านตามขอบล่างจอ ไม่บล็อกการคลิกใดๆ ทั้งสิ้น -->
+<div class="wander-duck-wrap" id="wanderDuckWrap">
+  <svg class="wander-duck" viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg">
+    <rect class="duck-leg duck-leg-l" x="24" y="36" width="5" height="12" rx="2" fill="#FFA726"/>
+    <rect class="duck-leg duck-leg-r" x="32" y="36" width="5" height="12" rx="2" fill="#FFA726"/>
+    <ellipse cx="30" cy="30" rx="18" ry="14" fill="#FFFFFF"/>
+    <ellipse class="duck-wing" cx="22" cy="28" rx="8" ry="6" fill="#EDEDED"/>
+    <circle cx="42" cy="16" r="11" fill="#FFFFFF"/>
+    <path d="M 50 16 L 60 14 L 60 19 Z" fill="#FFB300"/>
+    <circle cx="45" cy="13" r="1.8" fill="#222"/>
+  </svg>
+</div>
+<script>
+function initWanderDuck(){
+  const wrap = document.getElementById('wanderDuckWrap');
+  if(!wrap) return;
+  const duckWidth = 50;
+
+  function walkTo(targetX){
+    const currentLeft = parseFloat(wrap.style.left || '0');
+    const distance = Math.abs(targetX - currentLeft);
+    const speed = 55; // px ต่อวินาที ปรับความเร็วเดิน
+    const duration = Math.max(1.5, distance / speed);
+    wrap.style.transitionDuration = duration + 's';
+    wrap.classList.toggle('facing-left', targetX < currentLeft);
+    wrap.style.left = targetX + 'px';
+    return duration;
+  }
+
+  // เดินเพ่นพ่านไปเรื่อยๆ จนกว่าจะถึงเวลาที่กำหนดไว้ (endTime) แล้วค่อยเดินออกจอ
+  function wanderUntil(endTime){
+    const anyOverlayOpen = document.querySelector('.overlay.open');
+    if(anyOverlayOpen){
+      setTimeout(() => wanderUntil(endTime), 1500);
+      return;
+    }
+    if(Date.now() >= endTime){
+      leaveScreen();
+      return;
+    }
+    const maxX = Math.max(0, window.innerWidth - duckWidth);
+    const targetX = Math.random() * maxX;
+    const duration = walkTo(targetX);
+    const pauseTime = 2000 + Math.random() * 4000; // หยุดพัก 2-6 วินาทีระหว่างจุดต่อจุด
+    setTimeout(() => wanderUntil(endTime), (duration * 1000) + pauseTime);
+  }
+
+  // เดินออกไปทางขอบจอที่ใกล้กว่า แล้วซ่อนตัว รอรอบถัดไป
+  function leaveScreen(){
+    const currentLeft = parseFloat(wrap.style.left || '0');
+    const maxX = window.innerWidth - duckWidth;
+    const exitX = currentLeft < maxX / 2 ? -duckWidth - 10 : window.innerWidth + 10;
+    const duration = walkTo(exitX);
+    setTimeout(() => {
+      wrap.style.visibility = 'hidden';
+      scheduleNextAppearance();
+    }, duration * 1000 + 200);
+  }
+
+  // โผล่เข้าจอจากขอบใดขอบหนึ่งแบบสุ่ม แล้วเริ่มเดินเพ่นพ่าน (อยู่หน้าจอ 30-60 วินาที)
+  function appear(){
+    const anyOverlayOpen = document.querySelector('.overlay.open');
+    if(anyOverlayOpen){
+      setTimeout(appear, 1500);
+      return;
+    }
+    const maxX = Math.max(0, window.innerWidth - duckWidth);
+    const enterFromLeft = Math.random() < 0.5;
+    const startX = enterFromLeft ? -duckWidth - 10 : window.innerWidth + 10;
+    wrap.style.transitionDuration = '0s';
+    wrap.style.left = startX + 'px';
+    wrap.classList.toggle('facing-left', !enterFromLeft);
+    wrap.style.visibility = 'visible';
+    void wrap.offsetWidth; // บังคับ reflow ก่อนเริ่ม transition ให้เห็นเดินเข้าจอจริงๆ
+
+    const targetX = Math.random() * maxX;
+    const duration = walkTo(targetX);
+    const visibleDuration = 30000 + Math.random() * 30000; // อยู่หน้าจอ 30-60 วินาที
+    const endTime = Date.now() + duration * 1000 + visibleDuration;
+    setTimeout(() => wanderUntil(endTime), duration * 1000 + 1000);
+  }
+
+  // สุ่มเวลาซ่อนตัวก่อนโผล่มารอบถัดไป (30-90 วินาที)
+  function scheduleNextAppearance(){
+    const hiddenDuration = 30000 + Math.random() * 60000;
+    setTimeout(appear, hiddenDuration);
+  }
+
+  wrap.style.visibility = 'hidden';
+  scheduleNextAppearance();
+}
+initWanderDuck();
 </script>
 </body>
 </html>
