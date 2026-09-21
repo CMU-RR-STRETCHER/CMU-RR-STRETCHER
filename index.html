@@ -1917,16 +1917,17 @@ function buildCard(c, now, order){
 
   const xrayClass = c.xray === 'yes' ? 'xray-yes' : 'xray-no';
   const xrayText = c.xray === 'yes' ? 'X-ray' : 'ไม่ X-ray';
-  const xrayTagHtml = `<span class="tag ${xrayClass}">${xrayText}</span>`;
+  // แท็บกำลังพักฟื้น: ซ่อนป้าย "ไม่ X-ray" ไปเลย โชว์แค่ตอนเป็น X-ray จริงเท่านั้น เพื่อลดความรก
+  const xrayTagHtml = (isWaiting && c.xray !== 'yes') ? '' : `<span class="tag ${xrayClass}">${xrayText}</span>`;
 
   card.innerHTML = `
     <div class="order-badge mono">${order}</div>
     ${isWaiting ? `<div class="edit-badge" data-action="edit-waiting" data-id="${c.id}" title="แก้ไขวอร์ด/เวลา/หมายเหตุ">✎</div>` : ''}
     <div class="card-top">
       <div>
-        <div class="ward-label">วอร์ดปลายทาง</div>
+        ${isWaiting ? '' : `<div class="ward-label">วอร์ดปลายทาง</div>`}
         <div class="ward-name">${escapeHtml(c.ward)}</div>
-        <div class="date-line mono">${fmtDate(c.date)}</div>
+        ${isWaiting ? '' : `<div class="date-line mono">${fmtDate(c.date)}</div>`}
       </div>
       <div class="card-right-info">
         ${isWaiting ? '' : `<div class="badge ${badgeClass}">${badgeText}</div>`}
