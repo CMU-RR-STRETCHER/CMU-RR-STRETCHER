@@ -1447,10 +1447,7 @@
   <div class="modal whats-new-modal">
     <h2>🆕 อัพเดทล่าสุด</h2>
     <ul class="whats-new-list">
-      <li>แก้บั๊กเสียงแจ้งเตือนถูกตัด</li>
-      <li>จัดการ์ดคอลัมน์ "กำลังพักฟื้น" และ "พร้อมส่งกลับวอร์ด" ใหม่</li>
-      <li>แก้ไขและเพิ่มเติมรายชื่อผู้ไปรับ/ผู้ไปส่ง</li>
-      <li>เป็ดก๊าบๆ 🦆</li>
+      <li>แก้ปัญหาเสียงแจ้งเตือนไม่ดังตอนสลับไปแท็บ/แอปอื่น</li>
     </ul>
     <div class="modal-actions">
       <button class="action-btn primary" id="btnCloseWhatsNew" style="flex:1;">ปิด</button>
@@ -1589,6 +1586,8 @@ const readyPlayer = makeAudioPlayer(PEPO_SOUND_SRC, 3);
 const sentOutPlayer = makeAudioPlayer(RORO_SOUND_SRC, 3);
 
 function unlockAudio(){
+  startKeepAliveAudio();
+  requestNotifyPermissionOnce();
   [...readyPlayer.pool, ...sentOutPlayer.pool].forEach(a => {
     // ข้ามตัวที่กำลังเล่นเสียงแจ้งเตือนจริงอยู่ ไม่ให้ถูกตัดเสียงทุกครั้งที่มีการกดอะไรก็ตามบนหน้าเว็บ
     if(!a.paused && !a.ended) return;
@@ -1611,6 +1610,75 @@ function playReadySound(){
 
 function playSentOutSound(){
   sentOutPlayer.play();
+}
+
+// --- แก้ปัญหา "เสียงไม่ดังตอนสลับไปแท็บ/แอปอื่นบนเครื่องเดียวกัน" ---
+// สาเหตุหลัก: เบราว์เซอร์ (โดยเฉพาะ Chrome) จะ "freeze/throttle" แท็บที่ถูกซ่อนอยู่เบื้องหลังนานเกินไป
+// ทำให้ JS ทั้งหน้าหยุดทำงานชั่วคราว (รวมถึงตัวรับข้อมูลจาก Firebase) จนกว่าจะสลับกลับมาที่แท็บนี้
+// วิธีแก้: เล่นเสียงเบามาก ๆ (แทบไม่ได้ยินด้วยหูคน) วนต่อเนื่องตลอดเวลาผ่าน Web Audio API
+// เบราว์เซอร์จะไม่ freeze/throttle แท็บที่ "กำลังเล่นเสียงอยู่" ทำให้หน้านี้ยังทำงานรับ-ส่งข้อมูลสด
+// และเล่นเสียงแจ้งเตือนจริงได้ทันที แม้ผู้ใช้จะสลับไปแท็บ/แอปอื่นอยู่ก็ตาม
+// (จะเห็นไอคอนลำโพงเล็ก ๆ ที่แท็บเบราว์เซอร์ตลอดเวลาที่เปิดหน้านี้ทิ้งไว้ - เป็นเรื่องปกติ ไม่ใช่บั๊ก)
+let keepAliveCtx = null;
+let keepAliveOsc = null;
+function startKeepAliveAudio(){
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return;
+    if(!keepAliveCtx){
+      keepAliveCtx = new Ctx();
+      const gain = keepAliveCtx.createGain();
+      gain.gain.value = 0.0005; // เบามากจนแทบไม่ได้ยิน แต่เบราว์เซอร์ยังนับว่า "กำลังเล่นเสียง"
+      const osc = keepAliveCtx.createOscillator();
+      osc.frequency.value = 18; // ความถี่ต่ำมาก แทบไม่ได้ยิน
+      osc.connect(gain);
+      gain.connect(keepAliveCtx.destination);
+      osc.start();
+      keepAliveOsc = osc;
+    }
+    if(keepAliveCtx.state === 'suspended'){
+      keepAliveCtx.resume().catch(() => {});
+    }
+  } catch(e){
+    console.error('เริ่มเสียง keep-alive ไม่สำเร็จ', e);
+  }
+}
+// เผื่อบางเบราว์เซอร์ยัง suspend เสียง keep-alive เป็นระยะ ให้ช่วยปลุกกลับเรื่อย ๆ
+setInterval(() => {
+  if(keepAliveCtx && keepAliveCtx.state === 'suspended'){
+    keepAliveCtx.resume().catch(() => {});
+  }
+}, 15000);
+// เมื่อสลับกลับมาที่แท็บ/แอปนี้ ให้ปลดล็อกเสียงและปลุก keep-alive ซ้ำอีกครั้งเผื่อถูกล็อกใหม่
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden){
+    unlockAudio();
+    startKeepAliveAudio();
+  }
+});
+window.addEventListener('focus', () => {
+  unlockAudio();
+  startKeepAliveAudio();
+});
+
+// --- แจ้งเตือนสำรองผ่านการแจ้งเตือนของระบบ (Notification API) ---
+// เผื่อเบราว์เซอร์บล็อกเสียงจริง ๆ ตอนซ่อนแท็บ ก็ยังมีแจ้งเตือนเด้งจากระบบให้เห็น (บนเครื่อง/เบราว์เซอร์ที่รองรับ)
+function requestNotifyPermissionOnce(){
+  try{
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission().catch(() => {});
+    }
+  } catch(e){}
+}
+function notifyIfHidden(title, body){
+  try{
+    if(document.hidden && 'Notification' in window && Notification.permission === 'granted'){
+      const n = new Notification(title, { body, tag: 'cmu-rr-preop-' + Date.now() });
+      setTimeout(() => { try{ n.close(); } catch(e){} }, 8000);
+    }
+  } catch(e){
+    console.error('แจ้งเตือนระบบไม่สำเร็จ', e);
+  }
 }
 function fmtClock(){
   const d = new Date();
@@ -1761,7 +1829,10 @@ casesRef.on('value', (snapshot) => {
         hasNewReadyFromOther = true;
       }
     });
-    if(hasNewReadyFromOther) playReadySound();
+    if(hasNewReadyFromOther){
+      playReadySound();
+      notifyIfHidden('มีผู้ป่วยพร้อมส่งกลับวอร์ด', 'กรุณาตรวจสอบหน้าจอ CMU RR & Pre-op');
+    }
 
     let hasNewSentOutFromOther = false;
     deliveringCasesNow.forEach(c => {
@@ -1769,7 +1840,10 @@ casesRef.on('value', (snapshot) => {
         hasNewSentOutFromOther = true;
       }
     });
-    if(hasNewSentOutFromOther) playSentOutSound();
+    if(hasNewSentOutFromOther){
+      playSentOutSound();
+      notifyIfHidden('มีเคสถูกส่งออกแล้ว', 'กรุณาตรวจสอบหน้าจอ CMU RR & Pre-op');
+    }
   }
 
   knownReadyIds = currentReadyIds;
