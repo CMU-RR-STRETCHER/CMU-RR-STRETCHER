@@ -927,6 +927,52 @@
     .mascot-img{height:34px;}
   }
 
+  /* ป๊อปอัพแจ้งเตือนกลางจอ ตอนมีเคสเด้งไปคอลัมน์ "ส่งผู้ป่วยได้" (ไม่โชว์ให้เครื่องที่กดส่งออกเองเห็น) */
+  .sentout-popup-container{
+    position:fixed;
+    top:18%;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:200;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    pointer-events:none; /* คลิกทะลุ container ได้ แต่การ์ดข้างในยังกดปิดได้ (ตั้ง pointer-events:auto เฉพาะการ์ด) */
+    max-width:92vw;
+  }
+  .sentout-popup{
+    pointer-events:auto;
+    width:340px;
+    max-width:92vw;
+    background:var(--surface);
+    border:1px solid var(--transit);
+    border-left:5px solid var(--transit);
+    border-radius:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.45);
+    padding:14px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    opacity:0;
+    transform:translateY(-16px) scale(0.96);
+    transition:opacity 0.25s ease, transform 0.25s ease;
+  }
+  .sentout-popup.show{opacity:1;transform:translateY(0) scale(1);}
+  .sentout-popup.hide{opacity:0;transform:translateY(-10px) scale(0.96);}
+  .sentout-popup-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .sentout-popup-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:var(--transit);}
+  .sentout-popup-close{
+    background:transparent;border:none;color:var(--muted);font-size:18px;line-height:1;
+    cursor:pointer;padding:2px 4px;border-radius:6px;
+  }
+  .sentout-popup-close:hover{background:var(--surface-2);color:var(--text);}
+  .sentout-popup-ward{font-size:17px;font-weight:700;color:var(--text);}
+  .sentout-popup-deliverer{font-size:13px;color:var(--muted);}
+  .sentout-popup-bar{height:3px;border-radius:3px;background:var(--surface-2);overflow:hidden;}
+  .sentout-popup-bar-fill{height:100%;background:var(--transit);width:100%;transform-origin:left;animation:sentoutPopupShrink linear forwards;}
+  @keyframes sentoutPopupShrink{from{transform:scaleX(1);}to{transform:scaleX(0);}}
+
   /* เป็ดเดินเพ่นพ่านตามขอบล่างจอ */
   .wander-duck-wrap{
     position:fixed;
@@ -1449,6 +1495,7 @@
     <ul class="whats-new-list">
       <li>แก้ปัญหาเสียงแจ้งเตือนไม่ดังตอนสลับไปแท็บ/แอปอื่น</li>
       <li>ประวัติ RR: กรองเฉพาะ Time in RR 7:59-23:59 น., ตัด Case Pass, โชว์เฉพาะเคสที่มีเจ้าของเคส, เอากลุ่มเวรออก</li>
+      <li>เพิ่มป๊อปอัพแจ้งเตือนกลางจอตอนมีเคสส่งผู้ป่วยได้ (อยู่ 15 วิ ปิดเองได้)</li>
     </ul>
     <div class="modal-actions">
       <button class="action-btn primary" id="btnCloseWhatsNew" style="flex:1;">ปิด</button>
@@ -1681,6 +1728,50 @@ function notifyIfHidden(title, body){
     console.error('แจ้งเตือนระบบไม่สำเร็จ', e);
   }
 }
+
+// --- ป๊อปอัพแจ้งเตือนกลางจอ ตอนมีเคสเด้งเข้าคอลัมน์ "ส่งผู้ป่วยได้" ---
+// โผล่กลางจอ อยู่ 15 วิแล้วหายไปเอง หรือกดปิดเองก่อนได้ ถ้ามีหลายเคสพร้อมกันจะเรียงต่อกันเป็นสแต็กแทนซ้อนกันมั่ว
+const SENTOUT_POPUP_MS = 15000;
+let sentOutPopupSeq = 0;
+function showSentOutPopup(c){
+  const container = document.getElementById('sentOutPopupContainer');
+  if(!container) return;
+
+  const popupId = 'sentout-popup-' + (++sentOutPopupSeq);
+  const delivererText = c.deliveredBy ? escapeHtml(c.deliveredBy) : 'ยังไม่ระบุผู้ไปส่ง';
+
+  const el = document.createElement('div');
+  el.className = 'sentout-popup';
+  el.id = popupId;
+  el.innerHTML = `
+    <div class="sentout-popup-head">
+      <div class="sentout-popup-title">🚑 ส่งผู้ป่วยได้แล้ว</div>
+      <button class="sentout-popup-close" aria-label="ปิด">✕</button>
+    </div>
+    <div class="sentout-popup-ward">${escapeHtml(c.ward || '-')}</div>
+    <div class="sentout-popup-deliverer">👤 ผู้ไปส่ง: ${delivererText}</div>
+    <div class="sentout-popup-bar"><div class="sentout-popup-bar-fill" style="animation-duration:${SENTOUT_POPUP_MS}ms;"></div></div>
+  `;
+
+  // เคสใหม่ให้ขึ้นบนสุดของสแต็กเสมอ เรียงเป็นระเบียบจากบนลงล่าง ไม่ซ้อนทับกัน
+  container.insertBefore(el, container.firstChild);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => el.classList.add('show'));
+  });
+
+  let dismissed = false;
+  const dismiss = () => {
+    if(dismissed) return;
+    dismissed = true;
+    el.classList.remove('show');
+    el.classList.add('hide');
+    setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 260);
+  };
+
+  el.querySelector('.sentout-popup-close').addEventListener('click', dismiss);
+  setTimeout(dismiss, SENTOUT_POPUP_MS);
+}
 function fmtClock(){
   const d = new Date();
   const hh = String(d.getHours()).padStart(2,'0');
@@ -1835,15 +1926,16 @@ casesRef.on('value', (snapshot) => {
       notifyIfHidden('มีผู้ป่วยพร้อมส่งกลับวอร์ด', 'กรุณาตรวจสอบหน้าจอ CMU RR & Pre-op');
     }
 
-    let hasNewSentOutFromOther = false;
+    const newSentOutCases = [];
     deliveringCasesNow.forEach(c => {
       if(!c.isDirectToWard && !knownDeliveringIds.has(c.id) && c.sentOutByClient !== clientId){
-        hasNewSentOutFromOther = true;
+        newSentOutCases.push(c);
       }
     });
-    if(hasNewSentOutFromOther){
+    if(newSentOutCases.length > 0){
       playSentOutSound();
       notifyIfHidden('มีเคสถูกส่งออกแล้ว', 'กรุณาตรวจสอบหน้าจอ CMU RR & Pre-op');
+      newSentOutCases.forEach(c => showSentOutPopup(c));
     }
   }
 
@@ -2994,6 +3086,8 @@ document.getElementById('btnExportCsv').addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 </script>
+
+<!-- ป๊อปอัพแจ้งเตือนกลางจอ ตอนมีเคสเด้งไปคอลัมน์ "ส่งผู้ป่วยได้" --><div class="sentout-popup-container" id="sentOutPopupContainer"></div>
 
 <!-- เป็ดเดินเพ่นพ่านตามขอบล่างจอ ไม่บล็อกการคลิกใดๆ ทั้งสิ้น -->
 <div class="wander-duck-wrap" id="wanderDuckWrap">
