@@ -930,46 +930,64 @@
   /* ป๊อปอัพแจ้งเตือนกลางจอ ตอนมีเคสเด้งไปคอลัมน์ "ส่งผู้ป่วยได้" (ไม่โชว์ให้เครื่องที่กดส่งออกเองเห็น) */
   .sentout-popup-container{
     position:fixed;
-    top:18%;
+    top:50%;
     left:50%;
-    transform:translateX(-50%);
+    transform:translate(-50%, -50%); /* ทั้งสแต็กอยู่กลางจอเสมอ มีหลายใบก็ขยายออกเท่าๆ กันทั้งบนและล่าง */
     z-index:200;
     display:flex;
     flex-direction:column;
     align-items:center;
-    gap:10px;
+    gap:14px;
     pointer-events:none; /* คลิกทะลุ container ได้ แต่การ์ดข้างในยังกดปิดได้ (ตั้ง pointer-events:auto เฉพาะการ์ด) */
-    max-width:92vw;
+    width:480px;
+    max-width:94vw;
   }
   .sentout-popup{
     pointer-events:auto;
-    width:340px;
-    max-width:92vw;
+    width:100%;
     background:var(--surface);
-    border:1px solid var(--transit);
-    border-left:5px solid var(--transit);
-    border-radius:14px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.45);
-    padding:14px 16px;
+    border:2px solid var(--transit);
+    border-radius:18px;
+    box-shadow:0 18px 50px rgba(0,0,0,0.6), 0 0 0 6px rgba(155,107,255,0.15);
+    padding:20px 24px 18px;
     display:flex;
     flex-direction:column;
-    gap:8px;
+    gap:12px;
     opacity:0;
-    transform:translateY(-16px) scale(0.96);
+    transform:scale(0.9);
     transition:opacity 0.25s ease, transform 0.25s ease;
   }
-  .sentout-popup.show{opacity:1;transform:translateY(0) scale(1);}
-  .sentout-popup.hide{opacity:0;transform:translateY(-10px) scale(0.96);}
+  .sentout-popup.show{opacity:1;transform:scale(1);}
+  .sentout-popup.hide{opacity:0;transform:scale(0.9);}
   .sentout-popup-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
-  .sentout-popup-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:var(--transit);}
+  .sentout-popup-title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px;color:var(--transit);}
   .sentout-popup-close{
-    background:transparent;border:none;color:var(--muted);font-size:18px;line-height:1;
-    cursor:pointer;padding:2px 4px;border-radius:6px;
+    background:var(--surface-2);border:1px solid var(--line);color:var(--muted);
+    font-size:18px;line-height:1;width:36px;height:36px;flex:0 0 36px;
+    cursor:pointer;border-radius:10px;display:flex;align-items:center;justify-content:center;
   }
-  .sentout-popup-close:hover{background:var(--surface-2);color:var(--text);}
-  .sentout-popup-ward{font-size:17px;font-weight:700;color:var(--text);}
-  .sentout-popup-deliverer{font-size:13px;color:var(--muted);}
-  .sentout-popup-bar{height:3px;border-radius:3px;background:var(--surface-2);overflow:hidden;}
+  .sentout-popup-close:hover{color:var(--text);filter:brightness(1.2);}
+  .sentout-popup-ward-label{font-size:13px;color:var(--muted);margin-bottom:-6px;}
+  .sentout-popup-ward{font-size:32px;font-weight:700;color:var(--text);line-height:1.2;word-break:break-word;}
+  .sentout-popup-info{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px;
+    padding-top:12px;
+    border-top:1px solid var(--line);
+  }
+  .sentout-popup-info-item{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .sentout-popup-info-label{font-size:12px;color:var(--muted);}
+  .sentout-popup-info-value{font-size:16px;font-weight:700;color:var(--text);word-break:break-word;}
+  .sentout-popup-info-value.owner{color:var(--preop);}
+  .sentout-popup-info-value.xray-yes{color:var(--xray);}
+  .sentout-popup-info-value.xray-no{color:var(--muted);}
+  .sentout-popup-bar{height:4px;border-radius:4px;background:var(--surface-2);overflow:hidden;}
+  @media(max-width:520px){
+    .sentout-popup{padding:16px 18px 14px;}
+    .sentout-popup-ward{font-size:26px;}
+    .sentout-popup-info-value{font-size:14px;}
+  }
   .sentout-popup-bar-fill{height:100%;background:var(--transit);width:100%;transform-origin:left;animation:sentoutPopupShrink linear forwards;}
   @keyframes sentoutPopupShrink{from{transform:scaleX(1);}to{transform:scaleX(0);}}
 
@@ -1732,13 +1750,16 @@ function notifyIfHidden(title, body){
 // --- ป๊อปอัพแจ้งเตือนกลางจอ ตอนมีเคสเด้งเข้าคอลัมน์ "ส่งผู้ป่วยได้" ---
 // โผล่กลางจอ อยู่ 15 วิแล้วหายไปเอง หรือกดปิดเองก่อนได้ ถ้ามีหลายเคสพร้อมกันจะเรียงต่อกันเป็นสแต็กแทนซ้อนกันมั่ว
 const SENTOUT_POPUP_MS = 15000;
+const SENTOUT_POPUP_MAX = 3; // โชว์พร้อมกันได้สูงสุด 3 ใบ กันสแต็กยาวล้นจอ ถ้าเกินจะปิดใบเก่าสุดให้เอง
 let sentOutPopupSeq = 0;
 function showSentOutPopup(c){
   const container = document.getElementById('sentOutPopupContainer');
   if(!container) return;
 
   const popupId = 'sentout-popup-' + (++sentOutPopupSeq);
-  const delivererText = c.deliveredBy ? escapeHtml(c.deliveredBy) : 'ยังไม่ระบุผู้ไปส่ง';
+  const ownerText = c.caseOwner ? escapeHtml(c.caseOwner) : '-';
+  const timeInRRText = c.timeInRR ? escapeHtml(c.timeInRR) + ' น.' : '-';
+  const isXray = c.xray === 'yes';
 
   const el = document.createElement('div');
   el.className = 'sentout-popup';
@@ -1748,17 +1769,24 @@ function showSentOutPopup(c){
       <div class="sentout-popup-title">🚑 ส่งผู้ป่วยได้แล้ว</div>
       <button class="sentout-popup-close" aria-label="ปิด">✕</button>
     </div>
+    <div class="sentout-popup-ward-label">วอร์ดปลายทาง</div>
     <div class="sentout-popup-ward">${escapeHtml(c.ward || '-')}</div>
-    <div class="sentout-popup-deliverer">👤 ผู้ไปส่ง: ${delivererText}</div>
+    <div class="sentout-popup-info">
+      <div class="sentout-popup-info-item">
+        <span class="sentout-popup-info-label">🗂 เจ้าของเคส</span>
+        <span class="sentout-popup-info-value${c.caseOwner ? ' owner' : ''}">${ownerText}</span>
+      </div>
+      <div class="sentout-popup-info-item">
+        <span class="sentout-popup-info-label">⏱ Time in RR</span>
+        <span class="sentout-popup-info-value mono">${timeInRRText}</span>
+      </div>
+      <div class="sentout-popup-info-item">
+        <span class="sentout-popup-info-label">X-ray</span>
+        <span class="sentout-popup-info-value ${isXray ? 'xray-yes' : 'xray-no'}">${isXray ? 'X-ray' : 'ไม่ X-ray'}</span>
+      </div>
+    </div>
     <div class="sentout-popup-bar"><div class="sentout-popup-bar-fill" style="animation-duration:${SENTOUT_POPUP_MS}ms;"></div></div>
   `;
-
-  // เคสใหม่ให้ขึ้นบนสุดของสแต็กเสมอ เรียงเป็นระเบียบจากบนลงล่าง ไม่ซ้อนทับกัน
-  container.insertBefore(el, container.firstChild);
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => el.classList.add('show'));
-  });
 
   let dismissed = false;
   const dismiss = () => {
@@ -1768,6 +1796,18 @@ function showSentOutPopup(c){
     el.classList.add('hide');
     setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 260);
   };
+  el._dismiss = dismiss;
+
+  // เคสใหม่ให้ขึ้นบนสุดของสแต็กเสมอ เรียงเป็นระเบียบจากบนลงล่าง ไม่ซ้อนทับกัน
+  container.insertBefore(el, container.firstChild);
+
+  // ถ้าเกินจำนวนสูงสุด ปิดใบเก่าสุด (อยู่ล่างสุดของสแต็ก) ออกก่อน
+  const active = [...container.querySelectorAll('.sentout-popup:not(.hide)')];
+  active.slice(SENTOUT_POPUP_MAX).forEach(p => { if(p._dismiss) p._dismiss(); });
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => el.classList.add('show'));
+  });
 
   el.querySelector('.sentout-popup-close').addEventListener('click', dismiss);
   setTimeout(dismiss, SENTOUT_POPUP_MS);
