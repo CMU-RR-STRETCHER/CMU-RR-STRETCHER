@@ -991,27 +991,104 @@
   .sentout-popup-bar-fill{height:100%;background:var(--transit);width:100%;transform-origin:left;animation:sentoutPopupShrink linear forwards;}
   @keyframes sentoutPopupShrink{from{transform:scaleX(1);}to{transform:scaleX(0);}}
 
-  /* เป็ดเดินเพ่นพ่านตามขอบล่างจอ */
+  /* เป็ดตัวกลม เดินเพ่นพ่านทั่วจอ อยู่ด้านหลังเนื้อหาทั้งหมด */
   .wander-duck-wrap{
     position:fixed;
-    bottom:6px;
+    top:0;
     left:0;
-    width:50px;
+    width:54px;
     height:42px;
-    z-index:40; /* อยู่เหนือเนื้อหาปกติ แต่ต่ำกว่า modal (z-index:50) จะได้ไม่ไปบังตอนมี popup */
+    z-index:-1; /* อยู่ชั้นล่างสุด "ด้านหลัง" เนื้อหาทั้งหมด การ์ด/ข้อความทับเป็ดเสมอ เป็ดไม่บังข้อมูลใดๆ เห็นเฉพาะตรงที่ว่าง */
     pointer-events:none; /* คลิกทะลุได้เสมอ ไม่ว่าเป็ดจะอยู่ตรงไหนก็ไม่บล็อกการกดปุ่มใดๆ */
     visibility:hidden; /* ซ่อนไว้เป็นค่าเริ่มต้น กันโชว์แว้บก่อน JS ตั้งเวลาโผล่เข้าจอ */
-    transition-property:left;
+    transition-property:left, top;
     transition-timing-function:linear;
   }
-  .wander-duck-wrap.facing-left{transform:scaleX(-1);}
-  .wander-duck{width:100%;height:100%;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));}
-  .duck-leg-l{transform-origin:26.5px 36px;animation:duckLegL 0.5s ease-in-out infinite;}
-  .duck-leg-r{transform-origin:34.5px 36px;animation:duckLegR 0.5s ease-in-out infinite;}
-  @keyframes duckLegL{0%,100%{transform:rotate(18deg);}50%{transform:rotate(-18deg);}}
-  @keyframes duckLegR{0%,100%{transform:rotate(-18deg);}50%{transform:rotate(18deg);}}
-  .duck-wing{transform-origin:22px 28px;animation:duckWing 0.6s ease-in-out infinite;}
+  /* กลับด้านเฉพาะตัวเป็ด (ชั้น duck-flip) ไม่กลับโน้ตที่คาบอยู่ ตัวหนังสือจะได้ไม่กลับด้าน */
+  .duck-flip{width:100%;height:100%;}
+  .wander-duck-wrap.facing-left .duck-flip{transform:scaleX(-1);}
+  .wander-duck{width:100%;height:100%;display:block;overflow:visible;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));}
+
+  /* เดิน: ขาก้าวสลับ + ตัวเด้งเบาๆ (ขยับเฉพาะตอนเดินจริง พอหยุดก็ยืนนิ่ง ไม่ย่ำเท้าอยู่กับที่) */
+  .duck-leg-front{transform-origin:34.5px 36px;}
+  .duck-leg-back{transform-origin:26.5px 36px;}
+  .wander-duck-wrap.walking .duck-leg-front{animation:duckStepFront 0.5s ease-in-out infinite;}
+  .wander-duck-wrap.walking .duck-leg-back{animation:duckStepBack 0.5s ease-in-out infinite;}
+  .wander-duck-wrap.walking .duck-bob{animation:duckBob 0.25s ease-in-out infinite alternate;}
+  @keyframes duckStepFront{0%,100%{transform:rotate(-18deg);}50%{transform:rotate(18deg);}}
+  @keyframes duckStepBack{0%,100%{transform:rotate(18deg);}50%{transform:rotate(-18deg);}}
+  /* ปีกขยับเบาๆ ระหว่างเดิน (แบบเป็ดตัวเก่า) */
+  .wander-duck-wrap.walking .duck-wing{animation:duckWing 0.6s ease-in-out infinite;}
   @keyframes duckWing{0%,100%{transform:rotate(0deg);}50%{transform:rotate(-8deg);}}
+  @keyframes duckBob{from{transform:translateY(0);}to{transform:translateY(-1.5px);}}
+
+  /* กะพริบตาเป็นระยะ */
+  .duck-eye{transform-origin:45px 13px;animation:duckBlink 4.8s infinite;}
+  @keyframes duckBlink{0%,95%,100%{transform:scaleY(1);}97%{transform:scaleY(0.1);}}
+
+  /* มุกเสริม: กระโดดดีใจ + กระพือปีกรัวๆ ตอนมีเคสเด้งไป "ส่งผู้ป่วยได้" */
+  .duck-wing{transform-origin:22px 28px;}
+  .wander-duck-wrap.celebrate .wander-duck{animation:duckJump 0.55s ease-out 3;}
+  .wander-duck-wrap.celebrate .duck-wing{transform-origin:29px 27px;animation:duckWingFlap 0.16s ease-in-out infinite alternate;}
+  @keyframes duckJump{0%,100%{transform:translateY(0);}40%{transform:translateY(-26px);}70%{transform:translateY(-8px);}}
+  @keyframes duckWingFlap{from{transform:rotate(0deg);}to{transform:rotate(35deg);}}
+
+  /* โน้ตเล็กๆ ที่เป็ดคาบอยู่ในปาก (ไม่กลับด้านตามตัวเป็ด) */
+  .duck-carry-note{
+    display:none;
+    position:absolute;
+    top:9px;
+    left:48px;
+    width:14px;
+    height:11px;
+    background:#FFF3B0;
+    border-radius:2px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.35);
+    transform:rotate(10deg);
+    background-image:linear-gradient(#C9B45A,#C9B45A),linear-gradient(#C9B45A,#C9B45A);
+    background-size:9px 1px,7px 1px;
+    background-position:3px 4px,3px 7px;
+    background-repeat:no-repeat;
+  }
+  .wander-duck-wrap.facing-left .duck-carry-note{left:auto;right:48px;transform:rotate(-10deg);}
+  .wander-duck-wrap.carrying .duck-carry-note{display:block;}
+
+  /* โน้ตให้กำลังใจที่เป็ดคาบมาวาง: อยู่ด้านหลังข้อมูลเหมือนเป็ด วางเฉพาะตรงที่ว่าง อยู่ 8 วิแล้วจางหายไป */
+  .duck-note{
+    position:fixed;
+    z-index:-1;
+    pointer-events:none;
+    width:180px;
+    padding:10px 12px;
+    background:#FFF3B0;
+    color:#4A3B12;
+    font-size:14px;
+    font-weight:600;
+    line-height:1.45;
+    border-radius:4px 4px 12px 4px;
+    box-shadow:0 6px 16px rgba(0,0,0,0.4);
+    visibility:hidden;
+  }
+  .duck-note.show{visibility:visible;animation:duckNoteLife 8s ease forwards;}
+  @keyframes duckNoteLife{
+    0%{opacity:0;transform:scale(0.4) rotate(var(--note-tilt, 0deg));}
+    6%{opacity:1;transform:scale(1.06) rotate(var(--note-tilt, 0deg));}
+    10%{transform:scale(1) rotate(var(--note-tilt, 0deg));}
+    85%{opacity:1;transform:scale(1) rotate(var(--note-tilt, 0deg));}
+    100%{opacity:0;transform:scale(1) rotate(var(--note-tilt, 0deg));}
+  }
+
+  /* รอยเท้าเป็ด: อยู่หลังเป็ดและหลังเนื้อหาทั้งหมด ค่อยๆ จางหายไปเอง */
+  .duck-footprint{
+    position:fixed;
+    width:12px;
+    height:12px;
+    z-index:-2;
+    pointer-events:none;
+    animation:duckFootprintFade 3.5s ease-in forwards;
+  }
+  .duck-footprint svg{width:100%;height:100%;display:block;}
+  @keyframes duckFootprintFade{0%{opacity:0.75;}60%{opacity:0.5;}100%{opacity:0;}}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
@@ -1514,6 +1591,7 @@
       <li>แก้ปัญหาเสียงแจ้งเตือนไม่ดังตอนสลับไปแท็บ/แอปอื่น</li>
       <li>ประวัติ RR: กรองเฉพาะ Time in RR 7:59-23:59 น., ตัด Case Pass, โชว์เฉพาะเคสที่มีเจ้าของเคส, เอากลุ่มเวรออก</li>
       <li>เพิ่มป๊อปอัพแจ้งเตือนกลางจอตอนมีเคสส่งผู้ป่วยได้ (อยู่ 15 วิ ปิดเองได้)</li>
+      <li>เป็ด V2 🦆</li>
     </ul>
     <div class="modal-actions">
       <button class="action-btn primary" id="btnCloseWhatsNew" style="flex:1;">ปิด</button>
@@ -1976,6 +2054,8 @@ casesRef.on('value', (snapshot) => {
       playSentOutSound();
       notifyIfHidden('มีเคสถูกส่งออกแล้ว', 'กรุณาตรวจสอบหน้าจอ CMU RR & Pre-op');
       newSentOutCases.forEach(c => showSentOutPopup(c));
+      if(window.duckCelebrate) window.duckCelebrate(); // เป็ดกระโดดดีใจ
+
     }
   }
 
@@ -3129,39 +3209,84 @@ document.getElementById('btnExportCsv').addEventListener('click', () => {
 
 <!-- ป๊อปอัพแจ้งเตือนกลางจอ ตอนมีเคสเด้งไปคอลัมน์ "ส่งผู้ป่วยได้" --><div class="sentout-popup-container" id="sentOutPopupContainer"></div>
 
-<!-- เป็ดเดินเพ่นพ่านตามขอบล่างจอ ไม่บล็อกการคลิกใดๆ ทั้งสิ้น -->
+<!-- เป็ดเดินเพ่นพ่านทั่วจอ อยู่ด้านหลังเนื้อหาทั้งหมด (ไม่บังข้อมูล) และไม่บล็อกการคลิกใดๆ ทั้งสิ้น -->
 <div class="wander-duck-wrap" id="wanderDuckWrap">
-  <svg class="wander-duck" viewBox="0 0 60 50" xmlns="http://www.w3.org/2000/svg">
-    <rect class="duck-leg duck-leg-l" x="24" y="36" width="5" height="12" rx="2" fill="#FFA726"/>
-    <rect class="duck-leg duck-leg-r" x="32" y="36" width="5" height="12" rx="2" fill="#FFA726"/>
-    <ellipse cx="30" cy="30" rx="18" ry="14" fill="#FFFFFF"/>
-    <ellipse class="duck-wing" cx="22" cy="28" rx="8" ry="6" fill="#EDEDED"/>
-    <circle cx="42" cy="16" r="11" fill="#FFFFFF"/>
-    <path d="M 50 16 L 60 14 L 60 19 Z" fill="#FFB300"/>
-    <circle cx="45" cy="13" r="1.8" fill="#222"/>
-  </svg>
+  <div class="duck-flip">
+    <!-- เป็ดตัวเก่า (ตัวกลม) เปลี่ยนเป็นปากสั้นกลม -->
+    <svg class="wander-duck" viewBox="0 0 64 50" xmlns="http://www.w3.org/2000/svg">
+      <rect class="duck-leg duck-leg-back" x="24" y="36" width="5" height="12" rx="2" fill="#FFA726"/>
+      <rect class="duck-leg duck-leg-front" x="32" y="36" width="5" height="12" rx="2" fill="#FFA726"/>
+      <g class="duck-bob">
+        <ellipse cx="30" cy="30" rx="18" ry="14" fill="#FFFFFF"/>
+        <ellipse class="duck-wing" cx="22" cy="28" rx="8" ry="6" fill="#EDEDED"/>
+        <circle cx="42" cy="16" r="11" fill="#FFFFFF"/>
+        <path class="duck-bill" d="M51 13.2 C54 12.5 57 13 58.4 15.3 C59 17.4 57.2 18.6 54.6 18.6 L51.2 18.8 C50.3 17 50.2 14.8 51 13.2 Z" fill="#FFB300"/>
+        <circle class="duck-eye" cx="45" cy="13" r="1.8" fill="#222"/>
+      </g>
+    </svg>
+  </div>
+  <!-- โน้ตเล็กๆ ที่เป็ดคาบมา (โชว์เฉพาะตอนกำลังคาบ) -->
+  <div class="duck-carry-note"></div>
 </div>
 <script>
 function initWanderDuck(){
   const wrap = document.getElementById('wanderDuckWrap');
   if(!wrap) return;
-  const duckWidth = 50;
+  const duckWidth = 54;
+  const duckHeight = 42;
 
-  function walkTo(targetX){
+  let state = 'hidden';         // 'hidden' | 'entering' | 'wandering' | 'leaving'
+  let appearTimer = null;       // ตัวตั้งเวลาโผล่รอบถัดไป (ยกเลิกได้ถ้ามีเหตุให้โผล่ก่อนกำหนด)
+  let pendingCelebrate = false; // มีคิวให้กระโดดดีใจตอนเดินเข้ามาถึง
+  let jumpTimer = null;
+  let walkTimer = null;
+
+  // ขอบเขตที่เดินได้: ทั่วจอ แต่ต่ำกว่าแถบหัวด้านบน (หัวเว็บทึบ เดินไปหลังหัวก็มองไม่เห็นอยู่ดี)
+  function headerBottom(){
+    const header = document.querySelector('header');
+    return header ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+  }
+  function bounds(){
+    const minY = headerBottom() + 4;
+    const maxY = Math.max(minY, window.innerHeight - duckHeight - 6);
+    const maxX = Math.max(0, window.innerWidth - duckWidth);
+    return { minY, maxY, maxX };
+  }
+  function clamp(v, lo, hi){ return Math.min(hi, Math.max(lo, v)); }
+  function overlayOpen(){ return !!document.querySelector('.overlay.open'); }
+
+  function walkTo(targetX, targetY, speed){
     const currentLeft = parseFloat(wrap.style.left || '0');
-    const distance = Math.abs(targetX - currentLeft);
-    const speed = 55; // px ต่อวินาที ปรับความเร็วเดิน
-    const duration = Math.max(1.5, distance / speed);
+    const currentTop = parseFloat(wrap.style.top || '0');
+    const distance = Math.hypot(targetX - currentLeft, targetY - currentTop);
+    const pxPerSec = speed || 55; // px ต่อวินาที ปรับความเร็วเดิน
+    const duration = Math.max(speed ? 0.8 : 1.5, distance / pxPerSec);
     wrap.style.transitionDuration = duration + 's';
-    wrap.classList.toggle('facing-left', targetX < currentLeft);
+    if(Math.abs(targetX - currentLeft) > 2){
+      wrap.classList.toggle('facing-left', targetX < currentLeft);
+    }
     wrap.style.left = targetX + 'px';
+    wrap.style.top = targetY + 'px';
+    // ขาก้าวเฉพาะช่วงที่กำลังเดิน พอถึงจุดหมายก็ยืนนิ่ง
+    wrap.classList.add('walking');
+    clearTimeout(walkTimer);
+    walkTimer = setTimeout(() => wrap.classList.remove('walking'), duration * 1000);
     return duration;
+  }
+
+  // สุ่มจุดถัดไปใกล้ๆ ตำแหน่งเดิม (ไม่วาร์ปข้ามจอไกลๆ ให้ดูเหมือนเดินเล่นจริง)
+  function nextWaypoint(){
+    const { minY, maxY, maxX } = bounds();
+    const currentLeft = parseFloat(wrap.style.left || '0');
+    const currentTop = parseFloat(wrap.style.top || '0');
+    const x = clamp(currentLeft + (Math.random() * 2 - 1) * 400, 0, maxX);
+    const y = clamp(currentTop + (Math.random() * 2 - 1) * 250, minY, maxY);
+    return { x, y };
   }
 
   // เดินเพ่นพ่านไปเรื่อยๆ จนกว่าจะถึงเวลาที่กำหนดไว้ (endTime) แล้วค่อยเดินออกจอ
   function wanderUntil(endTime){
-    const anyOverlayOpen = document.querySelector('.overlay.open');
-    if(anyOverlayOpen){
+    if(overlayOpen()){
       setTimeout(() => wanderUntil(endTime), 1500);
       return;
     }
@@ -3169,53 +3294,263 @@ function initWanderDuck(){
       leaveScreen();
       return;
     }
-    const maxX = Math.max(0, window.innerWidth - duckWidth);
-    const targetX = Math.random() * maxX;
-    const duration = walkTo(targetX);
+    const { x, y } = nextWaypoint();
+    const duration = walkTo(x, y);
     const pauseTime = 2000 + Math.random() * 4000; // หยุดพัก 2-6 วินาทีระหว่างจุดต่อจุด
     setTimeout(() => wanderUntil(endTime), (duration * 1000) + pauseTime);
   }
 
-  // เดินออกไปทางขอบจอที่ใกล้กว่า แล้วซ่อนตัว รอรอบถัดไป
+  // เดินออกไปทางขอบซ้าย/ขวาที่ใกล้กว่า แล้วซ่อนตัว รอรอบถัดไป
   function leaveScreen(){
+    state = 'leaving';
+    wrap.classList.remove('carrying');
     const currentLeft = parseFloat(wrap.style.left || '0');
-    const maxX = window.innerWidth - duckWidth;
+    const currentTop = parseFloat(wrap.style.top || '0');
+    const { maxX } = bounds();
     const exitX = currentLeft < maxX / 2 ? -duckWidth - 10 : window.innerWidth + 10;
-    const duration = walkTo(exitX);
+    const duration = walkTo(exitX, currentTop);
     setTimeout(() => {
       wrap.style.visibility = 'hidden';
+      state = 'hidden';
       scheduleNextAppearance();
     }, duration * 1000 + 200);
   }
 
-  // โผล่เข้าจอจากขอบใดขอบหนึ่งแบบสุ่ม แล้วเริ่มเดินเพ่นพ่าน (อยู่หน้าจอ 30-60 วินาที)
+  // โผล่เข้าจอจากขอบซ้ายหรือขวาแบบสุ่ม ที่ความสูงสุ่ม แล้วเริ่มเดินเพ่นพ่าน (อยู่หน้าจอ 30-60 วินาที)
+  // ประมาณ 1 ใน 3 ของรอบ จะคาบโน้ตให้กำลังใจเข้ามาวางด้วย (ยกเว้นรอบที่วิ่งมาดีใจ)
   function appear(){
-    const anyOverlayOpen = document.querySelector('.overlay.open');
-    if(anyOverlayOpen){
-      setTimeout(appear, 1500);
+    if(overlayOpen()){
+      appearTimer = setTimeout(appear, 1500);
       return;
     }
-    const maxX = Math.max(0, window.innerWidth - duckWidth);
+    state = 'entering';
+    lastPrint = null; // เริ่มรอยเท้าชุดใหม่ ไม่ลากต่อจากตำแหน่งรอบก่อน
+    const carryNote = !pendingCelebrate && Math.random() < 1 / 3;
+    wrap.classList.toggle('carrying', carryNote);
+
+    const { minY, maxY, maxX } = bounds();
     const enterFromLeft = Math.random() < 0.5;
     const startX = enterFromLeft ? -duckWidth - 10 : window.innerWidth + 10;
+    const startY = minY + Math.random() * (maxY - minY);
     wrap.style.transitionDuration = '0s';
     wrap.style.left = startX + 'px';
+    wrap.style.top = startY + 'px';
     wrap.classList.toggle('facing-left', !enterFromLeft);
     wrap.style.visibility = 'visible';
     void wrap.offsetWidth; // บังคับ reflow ก่อนเริ่ม transition ให้เห็นเดินเข้าจอจริงๆ
 
-    const targetX = Math.random() * maxX;
-    const duration = walkTo(targetX);
+    // ก้าวแรกเดินเข้ามาในจอสัก 150-400px จากขอบที่โผล่มา (ถ้ามาเพื่อดีใจ จะวิ่งเข้ามาเร็วกว่าปกติ)
+    const stepIn = 150 + Math.random() * 250;
+    const targetX = clamp(enterFromLeft ? stepIn : maxX - stepIn, 0, maxX);
+    const targetY = clamp(startY + (Math.random() * 2 - 1) * 120, minY, maxY);
+    const duration = walkTo(targetX, targetY, pendingCelebrate ? 160 : undefined);
     const visibleDuration = 30000 + Math.random() * 30000; // อยู่หน้าจอ 30-60 วินาที
     const endTime = Date.now() + duration * 1000 + visibleDuration;
-    setTimeout(() => wanderUntil(endTime), duration * 1000 + 1000);
+    setTimeout(() => {
+      state = 'wandering';
+      if(pendingCelebrate){
+        pendingCelebrate = false;
+        doJump();
+        setTimeout(() => wanderUntil(endTime), 1800);
+      } else if(carryNote){
+        setTimeout(() => deliverNote(endTime, 0), 400);
+      } else {
+        setTimeout(() => wanderUntil(endTime), 600);
+      }
+    }, duration * 1000 + 400);
   }
 
   // สุ่มเวลาซ่อนตัวก่อนโผล่มารอบถัดไป (30-90 วินาที)
   function scheduleNextAppearance(){
     const hiddenDuration = 30000 + Math.random() * 60000;
-    setTimeout(appear, hiddenDuration);
+    appearTimer = setTimeout(appear, hiddenDuration);
   }
+
+  // --- โน้ตให้กำลังใจ: เป็ดคาบมาวางตรงที่ว่าง อยู่ 8 วิแล้วจางหายไป ---
+  const DUCK_NOTE_MESSAGES = [
+    'ดื่มน้ำบ้างนะ 💧',
+    'อย่าลืมกินข้าวนะ 🍚',
+    'พักสายตาแป๊บนึงนะ 👀',
+    'ยืดเส้นยืดสายหน่อย 🙆',
+    'หายใจลึกๆ แล้วค่อยลุยต่อ 🌬️',
+    'เหนื่อยก็พักได้นะ 🤍',
+    'ดูแลคนอื่นแล้ว อย่าลืมดูแลตัวเองนะ 💗',
+    'สู้ๆ นะเวรนี้ 💪',
+    'วันนี้ทำได้ดีมากเลย ✨',
+    'ค่อยๆ ไปทีละเคสนะ 🐢',
+    'ทำดีที่สุดแล้ว ภูมิใจในตัวเองด้วยนะ 🌟',
+    'ขอบคุณที่ดูแลผู้ป่วยอย่างดีนะ 💐',
+    'คนไข้ปลอดภัยเพราะทีมนี้ 🏥',
+    'ทีมเราเก่งที่สุด 🙌',
+    'ช่วยกันคนละไม้คนละมือ งานก็เบา 🤝',
+    'คุณคือฮีโร่ของคนไข้วันนี้ 🦸',
+    'อีกนิดเดียว เก่งมากแล้ว 💫',
+    'ก๊าบๆ เป็นกำลังใจให้นะ 🦆',
+    'เป็ดมาส่งความสดใส ☀️',
+    'เป็ดเชื่อในตัวคุณ ✨',
+    'เป็ดขอกอดทีนึง 🤗',
+    'ชาร์จพลังเต็ม 100% แล้ว ลุย! 🔋',
+    'เป็ดส่งพลังบวกมาให้ 💛',
+    'เก่งมาก ขอปรบปีกให้ 👏🦆'
+  ];
+  const recentNoteIdx = []; // กันสุ่มซ้ำกับ 5 ข้อความล่าสุด
+  function pickNoteMessage(){
+    const pool = DUCK_NOTE_MESSAGES.map((_, i) => i).filter(i => !recentNoteIdx.includes(i));
+    const idx = pool[Math.floor(Math.random() * pool.length)];
+    recentNoteIdx.push(idx);
+    while(recentNoteIdx.length > 5) recentNoteIdx.shift();
+    return DUCK_NOTE_MESSAGES[idx];
+  }
+
+  // จุดที่ถือว่า "ว่าง" = พื้นหลังเปล่าๆ ของหน้า/คอลัมน์ ไม่มีการ์ด ข้อความ หรือปุ่มอยู่ตรงนั้น
+  function isFreePoint(x, y){
+    const el = document.elementFromPoint(x, y);
+    if(!el) return false;
+    if(el.tagName === 'HTML' || el.tagName === 'BODY' || el.tagName === 'MAIN') return true;
+    return el.classList.contains('columns') || el.classList.contains('column') || el.classList.contains('board');
+  }
+  function isFreeRect(left, top, w, hgt){
+    const pts = [
+      [left + 2, top + 2], [left + w / 2, top + 2], [left + w - 2, top + 2],
+      [left + 2, top + hgt / 2], [left + w / 2, top + hgt / 2], [left + w - 2, top + hgt / 2],
+      [left + 2, top + hgt - 2], [left + w / 2, top + hgt - 2], [left + w - 2, top + hgt - 2]
+    ];
+    return pts.every(([px, py]) => isFreePoint(px, py));
+  }
+  // สุ่มหาที่ว่างพอจะวางโน้ตได้ เลือกจุดที่ใกล้เป็ดที่สุด (จะได้ไม่ต้องเดินไกล)
+  function findFreeNoteSpot(w, hgt){
+    const minX = 10, maxX = window.innerWidth - w - 10;
+    const minY = headerBottom() + 10, maxY = window.innerHeight - hgt - 10;
+    if(maxX <= minX || maxY <= minY) return null;
+    const duckX = parseFloat(wrap.style.left || '0');
+    const duckY = parseFloat(wrap.style.top || '0');
+    let best = null, bestDist = Infinity;
+    for(let i = 0; i < 60; i++){
+      const left = minX + Math.random() * (maxX - minX);
+      const top = minY + Math.random() * (maxY - minY);
+      if(!isFreeRect(left, top, w, hgt)) continue;
+      const dist = Math.hypot(left - duckX, top - duckY);
+      if(dist < bestDist){ best = { left, top }; bestDist = dist; }
+    }
+    return best;
+  }
+
+  function deliverNote(endTime, tries){
+    if(overlayOpen()){
+      setTimeout(() => deliverNote(endTime, tries), 1500);
+      return;
+    }
+    // สร้างโน้ตไว้ก่อน (ยังซ่อนอยู่) เพื่อวัดขนาดจริง แล้วค่อยหาที่ว่างที่ใส่พอดี
+    const note = document.createElement('div');
+    note.className = 'duck-note';
+    note.textContent = pickNoteMessage();
+    document.body.insertBefore(note, wrap); // อยู่ก่อนเป็ดใน DOM = เป็ดเดินทับโน้ตได้ ไม่โดนโน้ตบัง
+    const w = note.offsetWidth, hgt = note.offsetHeight;
+    const spot = findFreeNoteSpot(w, hgt);
+    if(!spot){
+      // ไม่มีที่ว่างพอ (เคสเต็มจอ) ก็ไม่วาง เก็บโน้ตกลับไป แล้วเดินเล่นตามปกติ
+      note.remove();
+      wrap.classList.remove('carrying');
+      wanderUntil(endTime);
+      return;
+    }
+    // ไปยืนข้างโน้ต: ปกติยืนทางซ้ายหันขวา ถ้าชิดขอบซ้ายเกินไปก็ไปยืนทางขวาหันซ้าย
+    const { minY, maxY, maxX } = bounds();
+    const standLeft = spot.left - duckWidth + 4 >= 0;
+    const targetX = clamp(standLeft ? spot.left - duckWidth + 4 : spot.left + w - 4, 0, maxX);
+    const targetY = clamp(spot.top + hgt - duckHeight, minY, maxY);
+    const duration = walkTo(targetX, targetY);
+    setTimeout(() => {
+      if(overlayOpen() || !isFreeRect(spot.left, spot.top, w, hgt)){
+        // ระหว่างเดินไป ที่ตรงนั้นมีการ์ด/อย่างอื่นมาแทนแล้ว ลองหาที่ใหม่อีกรอบ (สูงสุด 2 รอบ)
+        note.remove();
+        if(tries < 2){ deliverNote(endTime, tries + 1); }
+        else { wrap.classList.remove('carrying'); wanderUntil(endTime); }
+        return;
+      }
+      wrap.classList.toggle('facing-left', !standLeft); // หันหน้าเข้าหาโน้ตตอนวาง
+      wrap.classList.remove('carrying');
+      note.style.left = spot.left + 'px';
+      note.style.top = spot.top + 'px';
+      note.style.setProperty('--note-tilt', ((Math.random() * 6) - 3).toFixed(1) + 'deg');
+      note.style.transformOrigin = standLeft ? 'left bottom' : 'right bottom';
+      note.classList.add('show');
+      setTimeout(() => note.remove(), 8100);
+      setTimeout(() => wanderUntil(endTime), 1500); // ยืนดูโน้ตแป๊บนึงแล้วค่อยเดินต่อ
+    }, duration * 1000 + 150);
+  }
+
+  // --- มุกเสริม: กระโดดดีใจ + กระพือปีก ตอนมีเคสเด้งไป "ส่งผู้ป่วยได้" ---
+  function doJump(){
+    wrap.classList.remove('celebrate');
+    void wrap.offsetWidth; // รีสตาร์ทแอนิเมชันถ้ากำลังกระโดดอยู่แล้ว
+    wrap.classList.add('celebrate');
+    clearTimeout(jumpTimer);
+    jumpTimer = setTimeout(() => wrap.classList.remove('celebrate'), 1700);
+  }
+  // เรียกจากสคริปต์หลักตอนมีเคสเด้งไป "ส่งผู้ป่วยได้"
+  // ถ้าเป็ดอยู่บนจอ กระโดดเลย / ถ้าซ่อนอยู่ จะวิ่งเข้ามากระโดดให้ดู / ถ้ากำลังเดินเข้า จะกระโดดตอนเข้ามาถึง
+  window.duckCelebrate = function(){
+    if(state === 'hidden'){
+      pendingCelebrate = true;
+      clearTimeout(appearTimer);
+      appear();
+    } else if(state === 'entering'){
+      if(wrap.classList.contains('carrying')) doJump(); // กำลังคาบโน้ตเข้ามา กระโดดเลยไม่ต้องรอ
+      else pendingCelebrate = true;
+    } else {
+      doJump();
+    }
+  };
+
+  // --- รอยเท้าเป็ด: ทิ้งไว้ระหว่างเดิน แล้วค่อยๆ จางหายไปเอง (เห็นแค่ 5-6 รอย) ---
+  const FOOTPRINT_STEP = 20;   // ระยะห่างระหว่างรอยเท้า (px)
+  const FOOTPRINT_MAX = 6;     // รอยเท้าบนจอพร้อมกันได้สูงสุด (เอาแค่ 5-6 รอยพอ)
+  const FOOTPRINT_LIFE = 3500; // อยู่ได้กี่มิลลิวินาทีก่อนหายไป (ตรงกับแอนิเมชันจาง 3.5 วิ)
+  const FOOTPRINT_SVG = '<svg viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"><path d="M1 6 L10 1.2 L8.2 4.3 L11.5 6 L8.2 7.7 L10 10.8 Z" fill="#A9825A"/></svg>';
+  let lastPrint = null;
+  let footSide = 1;
+  const footprints = [];
+
+  function dropFootprint(x, y, angleDeg){
+    const el = document.createElement('div');
+    el.className = 'duck-footprint';
+    el.innerHTML = FOOTPRINT_SVG;
+    el.style.left = (x - 6) + 'px';
+    el.style.top = (y - 6) + 'px';
+    el.style.transform = 'rotate(' + angleDeg + 'deg)';
+    document.body.appendChild(el);
+    footprints.push(el);
+    while(footprints.length > FOOTPRINT_MAX){
+      const old = footprints.shift();
+      if(old.parentNode) old.parentNode.removeChild(old);
+    }
+    setTimeout(() => {
+      const i = footprints.indexOf(el);
+      if(i !== -1) footprints.splice(i, 1);
+      if(el.parentNode) el.parentNode.removeChild(el);
+    }, FOOTPRINT_LIFE + 100);
+  }
+
+  setInterval(() => {
+    if(wrap.style.visibility !== 'visible') return;
+    const r = wrap.getBoundingClientRect();
+    const fx = r.left + r.width / 2;
+    const fy = r.bottom - 3;
+    if(!lastPrint){ lastPrint = { x: fx, y: fy }; return; }
+    const dx = fx - lastPrint.x;
+    const dy = fy - lastPrint.y;
+    const dist = Math.hypot(dx, dy);
+    if(dist < FOOTPRINT_STEP) return;
+    lastPrint = { x: fx, y: fy };
+    if(fx < 0 || fx > window.innerWidth) return; // ยังอยู่นอกจอ ไม่ต้องวาดรอย
+    const angle = Math.atan2(dy, dx);
+    // สลับเท้าซ้าย/ขวา โดยเยื้องตั้งฉากกับทิศที่เดินเล็กน้อย
+    footSide = -footSide;
+    const ox = -Math.sin(angle) * 4 * footSide;
+    const oy = Math.cos(angle) * 4 * footSide;
+    dropFootprint(fx + ox, fy + oy, angle * 180 / Math.PI);
+  }, 300);
 
   wrap.style.visibility = 'hidden';
   scheduleNextAppearance();
