@@ -1448,7 +1448,7 @@
     <h2>🆕 อัพเดทล่าสุด</h2>
     <ul class="whats-new-list">
       <li>แก้ปัญหาเสียงแจ้งเตือนไม่ดังตอนสลับไปแท็บ/แอปอื่น</li>
-      <li>ประวัติ RR โชว์เฉพาะเคสที่ Time in RR ช่วง 7:59-23:59 น. ของวันนั้น</li>
+      <li>ประวัติ RR: กรองเฉพาะ Time in RR 7:59-23:59 น., ตัด Case Pass, โชว์เฉพาะเคสที่มีเจ้าของเคส, เอากลุ่มเวรออก</li>
     </ul>
     <div class="modal-actions">
       <button class="action-btn primary" id="btnCloseWhatsNew" style="flex:1;">ปิด</button>
@@ -2227,6 +2227,8 @@ function renderHistory(){
       const mins = timeInRRMinutes(c);
       return mins >= (7 * 60 + 59) && mins <= (23 * 60 + 59);
     });
+    // ตัด Case Pass ออก (ไม่ได้ผ่าน RR จริง) และโชว์เฉพาะเคสที่มีเจ้าของเคสระบุไว้
+    hist = hist.filter(c => !c.isDirectToWard && !!c.caseOwner);
   } else {
     datePickerEl.style.display = 'none';
   }
@@ -2259,26 +2261,8 @@ function renderHistory(){
   const shiftOrder = ['☀️ เวรเช้า','⛅ เวรบ่าย','🌙 เวรดึก'];
 
   if(historyActiveTab !== 'preop'){
-    // แท็บ RR: มีแค่วันนี้วันเดียวอยู่แล้ว ไม่ต้องมีหัวข้อวันที่/พับกาง จัดกลุ่มแค่ตามเวรพอ
-    const byShift = {};
-    hist.forEach(c => {
-      const shift = getShiftName(c.pickedAt);
-      if(!byShift[shift]) byShift[shift] = [];
-      byShift[shift].push(c);
-    });
-
-    groupsEl.innerHTML = shiftOrder.filter(s => byShift[s]).map(shift => {
-      const rows = byShift[shift];
-      const shiftAvg = rows.reduce((s,c) => s + caseWaitDuration(c), 0) / rows.length;
-      return `
-        <div class="history-shift-group">
-          <div class="history-shift-head">
-            <span>${shift}</span>
-            <span class="shift-count">${rows.length} คน · เฉลี่ยรอ ${elapsed(shiftAvg)}</span>
-          </div>
-          ${rows.map(c => buildHistoryRowHtml(c)).join('')}
-        </div>`;
-    }).join('');
+    // แท็บ RR: มีแค่วันนี้วันเดียวอยู่แล้ว และกรองช่วงเวลา/เจ้าของเคสมาแล้ว โชว์เป็นลิสต์เดียวรวด ไม่ต้องแยกกลุ่มตามเวร
+    groupsEl.innerHTML = hist.map(c => buildHistoryRowHtml(c)).join('');
     return;
   }
 
