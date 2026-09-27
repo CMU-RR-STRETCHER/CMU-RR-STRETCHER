@@ -1448,6 +1448,7 @@
     <h2>🆕 อัพเดทล่าสุด</h2>
     <ul class="whats-new-list">
       <li>แก้ปัญหาเสียงแจ้งเตือนไม่ดังตอนสลับไปแท็บ/แอปอื่น</li>
+      <li>ประวัติ RR โชว์เฉพาะเคสที่ Time in RR ช่วง 7:59-23:59 น. ของวันนั้น</li>
     </ul>
     <div class="modal-actions">
       <button class="action-btn primary" id="btnCloseWhatsNew" style="flex:1;">ปิด</button>
@@ -2221,6 +2222,11 @@ function renderHistory(){
     datePickerEl.style.display = '';
     if(datePickerEl.value !== historySelectedDate) datePickerEl.value = historySelectedDate;
     hist = hist.filter(c => (c.date || '') === historySelectedDate);
+    // โชว์เฉพาะเคสที่ Time in RR อยู่ในช่วง 07:59-23:59 ของวันนั้น (ตัดเคสเวลาผิดปกติ/ก่อนเปิด RR ออกจากประวัติ)
+    hist = hist.filter(c => {
+      const mins = timeInRRMinutes(c);
+      return mins >= (7 * 60 + 59) && mins <= (23 * 60 + 59);
+    });
   } else {
     datePickerEl.style.display = 'none';
   }
