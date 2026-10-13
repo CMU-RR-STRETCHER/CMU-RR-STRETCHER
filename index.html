@@ -3557,5 +3557,101 @@ function initWanderDuck(){
 }
 initWanderDuck();
 </script>
+<!-- Halloween theme: วางบล็อกนี้ไว้ท้ายไฟล์หลัก ก่อนแท็กปิด body -->
+<style>
+/* สีสถานะ (เขียว/เหลือง/แดง/ม่วง/ฟ้า) ไม่ถูกแตะ เปลี่ยนแค่โทนพื้นหลังกับของตกแต่งนิ่งๆ ไม่มีอะไรเคลื่อนไหว */
+html.halloween{
+  --bg:#110a1b; --surface:#1c1230; --surface-2:#27193f; --line:#46296e;
+  --text:#F6EBDD; --muted:#A997C6;
+}
+html.halloween body{
+  background-color:var(--bg);
+  background-image:linear-gradient(180deg,#1a0d2b 0%,#0d0716 100%);
+  background-attachment:fixed;
+}
+/* แสงม่วงจางๆ ด้านล่างจอ อยู่หลังเนื้อหา กดทะลุได้ */
+html.halloween body::after{
+  content:"";position:fixed;left:0;right:0;bottom:0;height:120px;z-index:-1;pointer-events:none;
+  background:linear-gradient(0deg,rgba(120,70,190,.18),transparent);
+}
+
+/* หัวเว็บ */
+html.halloween header{
+  background:rgba(17,10,27,.95);
+  border-bottom:1px solid rgba(255,122,26,.45);
+}
+html.halloween header::before,html.halloween header::after{
+  content:"";position:absolute;top:0;width:56px;height:56px;pointer-events:none;opacity:.3;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='%23cdbfe6' stroke-width='1.4'%3E%3Cpath d='M0 0H100M0 0L92 38M0 0L66 66M0 0L38 92M0 0V100M30 0Q22 22 0 30M60 0Q42 42 0 60M90 0Q62 62 0 90'/%3E%3C/svg%3E") no-repeat;
+  background-size:100% 100%;
+}
+html.halloween header::before{left:0}
+html.halloween header::after{right:0;transform:scaleX(-1)}
+html.halloween h1{color:#ff9d3b}
+html.halloween h1::after{content:" 🎃"}
+html.halloween .title .dot{background:#FF7A1A;box-shadow:0 0 8px #FF7A1A}
+
+/* ไอคอนเล็กๆ ที่หัวคอลัมน์ + สถานะว่าง */
+html.halloween .column-head h2::before{margin-right:6px}
+html.halloween .column:nth-child(1) .column-head h2::before{content:"🕸️"}
+html.halloween .column:nth-child(2) .column-head h2::before{content:"🧙"}
+html.halloween .column:nth-child(3) .column-head h2::before{content:"🎃"}
+html.halloween .column:nth-child(4) .column-head h2::before{content:"👻"}
+html.halloween .empty::before{content:"👻";display:block;font-size:22px;margin-bottom:4px;opacity:.7}
+
+/* เป็ด: โน้ตสีกระดาษเก่า รอยเท้าสีส้ม หมวกแม่มด */
+html.halloween .duck-note{background:#FFD9A0;color:#3b1a00}
+html.halloween .duck-footprint path{fill:#ff9d4d}
+.hw-hat{display:none}
+html.halloween .hw-hat{display:inline}
+
+/* ปุ่มเปิด/ปิดธีม */
+.hw-toggle{
+  background:transparent;border:1px solid var(--line);border-radius:50%;width:34px;height:34px;
+  font-size:17px;line-height:1;cursor:pointer;flex:0 0 auto;
+}
+.hw-toggle:hover{filter:brightness(1.3)}
+</style>
+<script>
+(function(){
+  var KEY = 'cmuRRHalloween';
+  var root = document.documentElement;
+  var btn = document.createElement('button');
+  btn.className = 'hw-toggle';
+  btn.type = 'button';
+
+  function isOn(){ try{ return localStorage.getItem(KEY) !== 'off'; } catch(e){ return true; } }
+  function apply(on){
+    root.classList.toggle('halloween', on);
+    btn.textContent = on ? '🎃' : '🌙';
+    btn.title = on ? 'ปิดธีม Halloween' : 'เปิดธีม Halloween';
+  }
+  btn.addEventListener('click', function(){
+    var next = !root.classList.contains('halloween');
+    try{ localStorage.setItem(KEY, next ? 'on' : 'off'); } catch(e){}
+    apply(next);
+  });
+  var header = document.querySelector('header');
+  if(header) header.appendChild(btn);
+
+  // หมวกแม่มดให้เป็ด
+  var bob = document.querySelector('#wanderDuckWrap .duck-bob');
+  if(bob){
+    var hat = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    hat.setAttribute('class', 'hw-hat');
+    hat.innerHTML =
+      '<path d="M34 6 L45 -13 L50 6 Z" fill="#6b2fb3"/>' +
+      '<rect x="35" y="0.5" width="14" height="3" fill="#FF7A1A"/>' +
+      '<ellipse cx="42" cy="6" rx="12" ry="3" fill="#2b1245"/>';
+    bob.appendChild(hat);
+  }
+
+  // บรรทัดในป๊อปอัพ "อัพเดทล่าสุด"
+  var list = document.querySelector('.whats-new-list');
+  if(list) list.insertAdjacentHTML('afterbegin', '<li>ธีม Halloween 🎃 (กดปุ่มมุมขวาบนเพื่อเปิด/ปิดได้)</li>');
+
+  apply(isOn());
+})();
+</script>
 </body>
 </html>
